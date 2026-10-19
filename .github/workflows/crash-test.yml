@@ -1,0 +1,39 @@
+# Crash-tests the store on every pull request: AI test shoppers run the
+# scenarios against PayPal's sandbox and the check fails if money goes wrong.
+# Needs repository secrets PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, OPENAI_API_KEY.
+name: Crash test
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: crash-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  crash-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run typecheck
+      - name: Crash-test the store you ship
+        run: npm run crash -- refund-retry declined-card price-tamper double-pay fixed --strict
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - name: Keep the recordings and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crash-test-runs
+          path: runs/
+          retention-days: 14
