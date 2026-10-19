@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { ApiError, CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
 import { catalog, findProduct, fromCents, toCents } from "./catalog.js";
 import { orderPage, shopPage } from "./pages.js";
+import { createSupportBot } from "./supportBot.js";
 import { createPayPal, isTimeout, type PayPalClientOptions } from "../paypal/client.js";
 
 // "original" ships the bug DummyRun should catch; "fixed" is the same store after the fix.
@@ -13,8 +14,13 @@ export interface StoreOrder {
   total: string;
   status: "CREATED" | "PAID";
   captureId?: string;
-  refunds: { sku: string; refundId: string; amount: string }[];
+  refunds: { sku: string; refundId: string; amount: string; via: RefundChannel }[];
 }
+
+export type RefundChannel = "form" | "support-bot";
+export type RefundOutcome =
+  | { ok: true; refundId: string; amount: string }
+  | { ok: false; status: 400 | 402 | 404 | 409 | 502 | 504; error: string };
 
 export interface StoreOptions {
   mode: StoreMode;
@@ -85,13 +91,12 @@ export function createStoreApp({ mode, paypal: paypalOptions, refundTimeoutMs = 
     return order ? c.html(orderPage(order)) : c.text("Order not found", 404);
   });
 
-  // Refund one damaged item. This is where the two modes differ.
-  app.post("/api/orders/:id/refunds", async (c) => {
-    const order = orders.get(c.req.param("id"));
-    if (!order?.captureId) return c.json({ error: "Order not found or not paid" }, 404);
-    const { sku } = await c.req.json<{ sku: string; reason?: string }>();
+  // Refund one item. Shared by the refund form and the support bot.
+  // This is where the two builds differ.
+  async function refundItem(order: StoreOrder, sku: string, via: RefundChannel): Promise<RefundOutcome> {
+    if (!order.captureId) return { ok: false, status: 404, error: "Order not found or not paid" };
     const line = order.items.find((i) => i.sku === sku);
-    if (!line) return c.json({ error: "That item isn't in this order" }, 400);
+    if (!line) return { ok: false, status: 400, error: "That item isn't in this order" };
 
     try {
       const { result } = await paypal.payments.refundCapturedPayment(
@@ -105,18 +110,30 @@ export function createStoreApp({ mode, paypal: paypalOptions, refundTimeoutMs = 
         { abortSignal: AbortSignal.timeout(refundTimeoutMs) },
       );
       if (!order.refunds.some((r) => r.refundId === result.id)) {
-        order.refunds.push({ sku, refundId: result.id!, amount: line.price });
+        order.refunds.push({ sku, refundId: result.id!, amount: line.price, via });
       }
-      return c.json({ ok: true, refundId: result.id, amount: line.price });
+      return { ok: true, refundId: result.id!, amount: line.price };
     } catch (error) {
-      if (isTimeout(error)) {
-        return c.json({ error: "The refund request timed out. Please try again." }, 504);
-      }
-      if (error instanceof ApiError) {
-        return c.json({ error: `PayPal refused the refund (${error.statusCode})` }, 502);
-      }
+      if (isTimeout(error)) return { ok: false, status: 504, error: "The refund request timed out. Please try again." };
+      if (error instanceof ApiError) return { ok: false, status: 502, error: `PayPal refused the refund (${error.statusCode})` };
       throw error;
     }
+  }
+
+  app.post("/api/orders/:id/refunds", async (c) => {
+    const order = orders.get(c.req.param("id"));
+    if (!order) return c.json({ error: "Order not found or not paid" }, 404);
+    const { sku } = await c.req.json<{ sku: string; reason?: string }>();
+    const outcome = await refundItem(order, sku, "form");
+    return outcome.ok ? c.json(outcome) : c.json({ error: outcome.error }, outcome.status);
+  });
+
+  const supportBot = createSupportBot({ mode, orders, refundItem });
+  app.post("/api/orders/:id/support", async (c) => {
+    const order = orders.get(c.req.param("id"));
+    if (!order) return c.json({ error: "Order not found" }, 404);
+    const { message } = await c.req.json<{ message: string }>();
+    return c.json({ reply: await supportBot.chat(order, String(message ?? "").slice(0, 2_000)) });
   });
 
   return { app, orders, mode, catalog };

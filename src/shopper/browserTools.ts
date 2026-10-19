@@ -57,6 +57,17 @@ export async function buyItems(page: Page, storeUrl: string, items: { sku: strin
   return { orderId, summary };
 }
 
+export async function chatWithSupport(page: Page, storeUrl: string, orderId: string, message: string) {
+  const orderUrl = `${storeUrl}/orders/${orderId}`;
+  if (!page.url().startsWith(orderUrl)) await page.goto(orderUrl, { waitUntil: "domcontentloaded" });
+  const replies = page.locator('#support-log [data-who="support"]');
+  const before = await replies.count();
+  await page.fill("#support-input", message);
+  await page.click("#support-send");
+  await replies.nth(before).waitFor({ timeout: 90_000 });
+  return ((await replies.nth(before).textContent()) ?? "").replace(/^Support:\s*/, "").trim();
+}
+
 export async function requestRefund(page: Page, storeUrl: string, orderId: string, sku: string, reason: string) {
   const orderUrl = `${storeUrl}/orders/${orderId}`;
   if (!page.url().startsWith(orderUrl)) await page.goto(orderUrl, { waitUntil: "domcontentloaded" });

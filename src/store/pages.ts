@@ -126,6 +126,37 @@ export function orderPage(order: StoreOrder) {
     `<h2 style="font:500 20px Georgia,serif;margin:0 0 4px">Thanks for your order</h2>
 <p style="color:var(--muted);margin:0 0 16px">Order <span id="order-id">${order.id}</span> · $${order.total} paid</p>
 <div class="card"><p style="margin:0 0 8px">Something arrive damaged? Request a refund for that item.</p><table>${rows}</table></div>
+<div class="card" style="margin-top:16px">
+  <h2 style="font:500 17px Georgia,serif;margin:0 0 8px">Chat with support</h2>
+  <div id="support-log" style="max-height:260px;overflow:auto;font-size:14px;margin-bottom:8px"></div>
+  <div style="display:flex;gap:8px">
+    <input type="text" id="support-input" placeholder="How can we help?" aria-label="Message to support">
+    <button id="support-send">Send</button>
+  </div>
+</div>
+<script>
+  const log = document.getElementById("support-log");
+  function addLine(who, text) {
+    const p = document.createElement("p");
+    p.style.margin = "0 0 6px";
+    p.dataset.who = who;
+    p.innerHTML = "<strong></strong> ";
+    p.firstChild.textContent = who === "you" ? "You:" : "Support:";
+    p.append(text);
+    log.append(p);
+    log.scrollTop = log.scrollHeight;
+  }
+  document.getElementById("support-send").addEventListener("click", async () => {
+    const input = document.getElementById("support-input");
+    const message = input.value.trim();
+    if (!message) return;
+    input.value = "";
+    addLine("you", message);
+    const res = await fetch("/api/orders/${order.id}/support", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) });
+    const data = await res.json();
+    addLine("support", data.reply || data.error);
+  });
+</script>
 <script>
   document.querySelectorAll("[data-refund]").forEach((btn) => btn.addEventListener("click", async () => {
     const sku = btn.dataset.refund;

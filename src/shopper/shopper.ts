@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { chromium } from "playwright";
 import { config } from "../config.js";
-import { buyItems, requestRefund, viewShop } from "./browserTools.js";
+import { buyItems, chatWithSupport, requestRefund, viewShop } from "./browserTools.js";
 
 export interface Persona {
   name: string;
@@ -69,6 +69,18 @@ const tools: OpenAI.Responses.Tool[] = [
   },
   {
     type: "function",
+    name: "chat_with_support",
+    description: "Send one message to the shop's support chat for an order. Returns the support assistant's reply.",
+    parameters: {
+      type: "object",
+      properties: { order_id: { type: "string" }, message: { type: "string" } },
+      required: ["order_id", "message"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    type: "function",
     name: "finish",
     description: "Call only when every step of your task is done, or you have given up after retrying. Summarize what happened in one sentence.",
     parameters: {
@@ -105,6 +117,8 @@ export async function runShopper(opts: { storeUrl: string; persona: Persona; vid
           else run.refundRequests.push({ sku: args.sku, attempts: 1 });
           return await requestRefund(page, opts.storeUrl, args.order_id, args.sku, args.reason);
         }
+        case "chat_with_support":
+          return await chatWithSupport(page, opts.storeUrl, args.order_id, args.message);
         case "finish":
           run.finalNote = args.summary;
           return "ok";
