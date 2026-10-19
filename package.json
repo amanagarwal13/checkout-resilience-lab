@@ -6,8 +6,10 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "start": "tsx src/server/server.ts",
     "dev": "tsx src/dev.ts",
     "crash": "tsx src/lab/crash.ts",
+    "fix": "tsx src/lab/fix.ts",
     "smoke": "tsx src/smoke.ts",
     "typecheck": "tsc --noEmit"
   },
