@@ -109,3 +109,22 @@ Results:
 Notes:
 - The scam fix is stricter than needed: it caps refunds at one per order for the refund form too, not just the bot. Safe, but honest customers with two damaged items would need a human. Worth mentioning in the README as a limitation of AI-written fixes, which is why they go through a re-run and human review rather than straight to production.
 - Each fix run takes 6 to 9 minutes, mostly the AI shoppers and the sandbox.
+
+## Phase 5. DummyRun web interface
+**Date:** Oct 19 · **Status:** done
+
+Built:
+- `src/server/lab.ts`: runs crash tests for the interface. Each scenario gets its own PayPal proxy and store on free ports, up to three in parallel (`MAX_PARALLEL`). One crash test at a time. Run history saved as `runs/<id>/run.json` and reloaded on start. "Investigate and fix" runs the investigator, patches a copy, type-checks it and re-runs the scenario, streaming progress.
+- `src/server/server.ts`: Hono API, server-sent events for live updates, live JPEG frames of each shopper's browser (about one a second), recordings, last frame kept on disk for finished tests.
+- `src/server/ui.ts`: one page, no build step. `npm start` serves it on port 3000.
+- Design: a crash-test lab rather than a generic dashboard. The yellow and black calibration target from crash-test dummies is the one bold element (lane markers, safety rating). Cool lab white background, one typeface family (Archivo) with condensed widths for headings and figures, red for failures, green for passes, the injected PayPal fault shown as a yellow hazard-stripe tag. Each lane shows a live frame with a crash-footage timer.
+- Layout: summary (safety rating set by the weakest test, total money at risk), five lanes, then the selected test: money checks and "Why it broke" on the left; PayPal call timeline, recording and the shopper's steps on the right. Earlier crash tests listed below.
+
+Verified:
+- Started a crash test from the browser: three lanes ran in parallel with live frames, all five finished, all five failed on the original store ($125.97 at risk).
+- Investigate and fix on refund-retry (triggered through the same API the button calls): investigating, re-running, done in about a minute; 2/5 to 5/5 and $16 to $0, with diagnosis, diff and re-run recording shown.
+- Desktop (1280px) and phone (390px) screenshots; no horizontal scrolling.
+
+Problems and fixes:
+- A wide code diff pushed the two-column layout out of shape and made the phone page 1,072px wide; fixed with `minmax(0, …)` grid columns.
+- Finished lanes lost their picture after a restart; the last frame is now saved with the run.
