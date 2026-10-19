@@ -128,3 +128,28 @@ Verified:
 Problems and fixes:
 - A wide code diff pushed the two-column layout out of shape and made the phone page 1,072px wide; fixed with `minmax(0, …)` grid columns.
 - Finished lanes lost their picture after a restart; the last frame is now saved with the run.
+
+## Phase 6. AG Studio dashboard
+**Date:** Oct 19 · **Status:** done, except the licence key (from Aman)
+
+Built:
+- `/dashboard`: AG Studio 3.0 (React), bundled with esbuild when the server starts, styled with the same crash-test lab tokens as the rest of DummyRun.
+- `src/dashboard/data.ts`: crash-test history flattened into four related tables: crash tests (one row per scenario per run, including runs patched by the investigator), money checks, money at risk by reason, and every PayPal call with any injected fault.
+- Report pages: an overview (safety rating, money at risk, tests, failing tests, store-build filter, money at risk by scenario and build, why money was at risk, a matrix of failed checks by scenario) and a PayPal calls page (calls by type with injected faults, error count, full call log).
+- **Two custom widgets**: a safety rating drawn as crash-test calibration targets, and a money-at-risk counter. Both read their value through `widgetApi.getData`, so Studio's filters apply, and both appear in Studio's widget menu under "DummyRun".
+- **A custom agent alongside Studio's built-in ones**: "Crash analyst", with Studio's schema and query tools plus two DummyRun tools: `explain_crash_test` (evidence and diagnosis for a scenario) and `start_crash_test` (only after the user confirms). Studio's lead agent was widened to delegate to it.
+- `/api/ai/responses`: server-side proxy for AG Studio's OpenAI adapter (the adapter is AG's own documentation example, copied unchanged). The key stays on the server, only listed models are allowed (`OPENAI_STUDIO_MODELS`, default `gpt-5.6-terra,gpt-5-mini`), output tokens capped per turn.
+
+Verified:
+- Dashboard renders with real history (6 tests, 34 checks, 27 PayPal calls).
+- Asked the assistant "Which scenario puts the most money at risk, and why? Ask the crash analyst." Studio's lead delegated to the crash analyst, which called `explain_crash_test` and answered correctly: price tampering, $41.97, charged $0.03 for $42.00 of goods because checkout trusted a browser price.
+
+Notes:
+- `ag-studio` is commercially licensed. Without a key it runs fully unlocked with a watermark and a console notice. Set `AG_STUDIO_LICENSE_KEY` in `.env` once the trial key arrives (request it around Nov 1 so it lasts until judging ends on Dec 15).
+- The bundle is 5.5 MB minified; acceptable for a demo, could be split later.
+- Not yet exercised: the assistant building a new widget, and `start_crash_test` from the chat.
+
+Problems and fixes:
+- Blank page: custom widget definitions need a `form` (Studio's `createDefaults` helper).
+- Studio's parameter builder takes descriptions as an option (`s.string({ description })`), not `.describe()`.
+- The AI chat is an edit-mode panel; a toggle above the canvas switches to edit mode with the assistant first.

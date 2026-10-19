@@ -22,6 +22,7 @@ export function page() {
     </select>
   </div>
   <button id="run" class="primary">Run crash test</button>
+  <nav class="nav"><a href="/" aria-current="page">Crash tests</a><a href="/dashboard">Dashboard</a></nav>
 </header>
 
 <main>
@@ -68,6 +69,9 @@ select { padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--
 .primary:disabled { background: var(--steel); cursor: default; }
 .secondary { padding: 8px 14px; border: 1px solid var(--ink); border-radius: var(--radius-s); background: transparent; color: var(--ink); font-weight: 600; }
 
+.nav { display: flex; gap: 18px; }
+.nav a { color: var(--steel); text-decoration: none; font-weight: 600; }
+.nav a[aria-current="page"] { color: var(--ink); box-shadow: 0 2px 0 var(--yellow); }
 main { max-width: 1280px; margin: 0 auto; padding: 24px 28px 64px; }
 
 .summary { display: grid; grid-template-columns: auto 1fr auto; gap: 32px; align-items: end; margin-bottom: 22px; }

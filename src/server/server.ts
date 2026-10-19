@@ -2,11 +2,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
+import { buildDashboard, dashboardRoutes } from "../dashboard/routes.js";
 import { createLab, type StoreLabel } from "./lab.js";
 import { page } from "./ui.js";
 
 const lab = createLab();
 const app = new Hono();
+await buildDashboard();
+dashboardRoutes(app, lab);
 
 app.get("/", (c) => c.html(page()));
 app.get("/api/scenarios", (c) => c.json(lab.scenarios()));
