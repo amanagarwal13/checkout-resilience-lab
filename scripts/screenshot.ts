@@ -9,6 +9,6 @@ page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") 
 page.on("pageerror", (e) => console.log(`[pageerror] ${e.message.slice(0, 600)}`));
 await page.goto(url, { waitUntil: "networkidle" });
 await page.waitForTimeout(Number(process.env.WAIT_MS ?? 1500));
-await page.screenshot({ path: out, fullPage: true });
+await page.screenshot({ path: out, fullPage: process.env.FULL_PAGE !== "0" });
 await browser.close();
 console.log(`saved ${out}`);

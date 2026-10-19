@@ -4,10 +4,18 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { buildDashboard, dashboardRoutes } from "../dashboard/routes.js";
 import { createLab, type StoreLabel } from "./lab.js";
+import { envNumber, limit } from "./limits.js";
 import { page } from "./ui.js";
 
 const lab = createLab();
 const app = new Hono();
+
+// Spending guards for the public demo, registered before the routes they protect.
+app.post("/api/runs", limit("crash tests", 3, envNumber("DAILY_CRASH_TESTS", 30)));
+app.post("/api/runs/:id/lanes/:lane/fix", limit("fixes", 3, envNumber("DAILY_FIXES", 15)));
+app.post("/api/ai/responses", limit("AI requests", 150, envNumber("DAILY_AI_REQUESTS", 1500)));
+app.get("/healthz", (c) => c.text("ok"));
+
 await buildDashboard();
 dashboardRoutes(app, lab);
 

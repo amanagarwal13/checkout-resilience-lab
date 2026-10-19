@@ -153,3 +153,27 @@ Problems and fixes:
 - Blank page: custom widget definitions need a `form` (Studio's `createDefaults` helper).
 - Studio's parameter builder takes descriptions as an option (`s.string({ description })`), not `.describe()`.
 - The AI chat is an edit-mode panel; a toggle above the canvas switches to edit mode with the assistant first.
+
+## Phase 7. Deploy to Render (prepared; deploy needs Aman)
+**Date:** Oct 19 · **Status:** files ready, not deployed
+
+Built:
+- `Dockerfile` on `mcr.microsoft.com/playwright:v1.64.1-noble` (Chromium and system libraries matching the Playwright version), `.dockerignore`.
+- `render.yaml` Blueprint: Docker web service on the Standard plan (Chromium needs about 2 GB), health check `/healthz`, a 2 GB disk for run history and recordings, secrets set in the dashboard (`sync: false`).
+- Spending guards for a public demo (`src/server/limits.ts`): per-visitor hourly and service-wide daily limits on crash tests (3/hour, 30/day), fixes (3/hour, 15/day) and AI requests (150/hour, 1,500/day), plus one crash test at a time. Checked with a throwaway app: `200 200 429 200 429` as expected.
+- `.env.example`, production build minified, `npm run crash -- ... --strict` exits non-zero when a money check fails.
+
+Not done yet:
+- Docker isn't installed locally, so the image has not been built; Render will be the first build.
+- Deploying needs a GitHub repo and Render access from Aman.
+- The webhook scenario (late and duplicate payment notifications) needs the public URL; it comes after deployment.
+
+Cost note: the Standard plan is about $25 a month. Deploying now and running to Dec 15 would use most of the $50 credit, so the plan is to deploy, verify, suspend, and resume around Nov 1.
+
+## Phases 8 and 9 (started early, no input needed)
+**Date:** Oct 19
+
+- `README.md` ordered by the judging criteria: results table, run instructions, how it works, PayPal integration table, AI tools used (including Claude Code for development), sponsor tools, what was built during the hackathon, limitations.
+- `LICENSE` (MIT) with third-party notices (PayPal AI Toolkit references under Apache-2.0; AG Studio under its own commercial licence).
+- `.github/workflows/crash-test.yml`: on every pull request, installs Chromium, type-checks and crash-tests the store you ship with `--strict`, uploading recordings and reports. Needs repository secrets.
+- `docs/images`: screenshots for the README (to be retaken from a fresh run on the hosted demo).

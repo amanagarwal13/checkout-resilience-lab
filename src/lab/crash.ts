@@ -49,4 +49,11 @@ for (const r of results) {
 }
 console.log(`  Reports and video: ${runDir}`);
 await proxy.close();
+
+// --strict: fail (for CI) when any judged test has a failed money check.
+const failed = results.filter((r) => !r.verdict.inconclusive && r.verdict.checks.some((c) => !c.passed));
+if (args.includes("--strict") && failed.length) {
+  console.log(`\n${failed.length} test(s) failed a money check.`);
+  process.exit(1);
+}
 process.exit(0);

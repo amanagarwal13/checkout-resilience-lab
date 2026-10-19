@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 
+// Locally the keys come from .env; on Render they are environment variables.
 if (existsSync(".env")) process.loadEnvFile(".env");
 
 function required(name: string): string {
