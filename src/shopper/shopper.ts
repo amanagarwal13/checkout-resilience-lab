@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { chromium } from "playwright";
 import { config } from "../config.js";
-import { buyItems, chatWithSupport, requestRefund, viewShop } from "./browserTools.js";
+import { buyItems, chatWithSupport, requestRefund, viewShop, type CheckoutBehaviour } from "./browserTools.js";
 
 export interface Persona {
   name: string;
@@ -93,11 +93,30 @@ const tools: OpenAI.Responses.Tool[] = [
   },
 ];
 
-export async function runShopper(opts: { storeUrl: string; persona: Persona; videoDir?: string; maxSteps?: number }): Promise<ShopperRun> {
+export async function runShopper(opts: {
+  storeUrl: string;
+  persona: Persona;
+  behaviour?: CheckoutBehaviour;
+  videoDir?: string;
+  maxSteps?: number;
+  onStep?: (step: ShopperStep) => void;
+  // Live JPEG frames of the shopper's browser, about one a second.
+  onFrame?: (jpegBase64: string) => void;
+}): Promise<ShopperRun> {
   const openai = new OpenAI({ apiKey: config.openaiApiKey });
   const browser = await chromium.launch({ headless: process.env.HEADED !== "1" });
-  const context = await browser.newContext(opts.videoDir ? { recordVideo: { dir: opts.videoDir, size: { width: 1100, height: 760 } } } : {});
+  const viewport = { width: 1100, height: 760 };
+  const context = await browser.newContext({ viewport, ...(opts.videoDir ? { recordVideo: { dir: opts.videoDir, size: viewport } } : {}) });
   const page = await context.newPage();
+
+  let streaming = Boolean(opts.onFrame);
+  const frames = (async () => {
+    while (streaming) {
+      const shot = await page.screenshot({ type: "jpeg", quality: 50 }).catch(() => null);
+      if (shot && streaming) opts.onFrame?.(shot.toString("base64"));
+      await new Promise((r) => setTimeout(r, 1_000));
+    }
+  })();
 
   const run: ShopperRun = { persona: opts.persona.name, steps: [], refundRequests: [] };
 
@@ -107,7 +126,7 @@ export async function runShopper(opts: { storeUrl: string; persona: Persona; vid
         case "view_shop":
           return JSON.stringify(await viewShop(page, opts.storeUrl));
         case "buy_items": {
-          const order = await buyItems(page, opts.storeUrl, args.items);
+          const order = await buyItems(page, opts.storeUrl, args.items, opts.behaviour);
           run.orderId = order.orderId;
           return `Payment succeeded. ${order.summary}`;
         }
@@ -148,8 +167,9 @@ export async function runShopper(opts: { storeUrl: string; persona: Persona; vid
       for (const call of calls) {
         const args = JSON.parse(call.arguments || "{}");
         const result = await callTool(call.name, args);
-        run.steps.push({ at: new Date().toISOString(), tool: call.name, args, result });
-        console.log(`    ${opts.persona.name} → ${call.name}(${call.name === "view_shop" ? "" : JSON.stringify(args)})\n      ${result.slice(0, 160)}`);
+        const step: ShopperStep = { at: new Date().toISOString(), tool: call.name, args, result };
+        run.steps.push(step);
+        opts.onStep?.(step);
         outputs.push({ type: "function_call_output", call_id: call.call_id, output: result });
       }
       if (run.finalNote) break;
@@ -166,6 +186,8 @@ export async function runShopper(opts: { storeUrl: string; persona: Persona; vid
       });
     }
   } finally {
+    streaming = false;
+    await frames;
     await context.close();
     run.videoPath = await page.video()?.path().catch(() => undefined);
     await browser.close();

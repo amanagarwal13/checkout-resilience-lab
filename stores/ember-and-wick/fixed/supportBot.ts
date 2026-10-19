@@ -1,13 +1,11 @@
 import OpenAI from "openai";
-import { config } from "../config.js";
-import type { RefundChannel, RefundOutcome, StoreMode, StoreOrder } from "./app.js";
+import type { RefundChannel, RefundOutcome, StoreOrder } from "./app.js";
 
 const POLICY = `Ember and Wick refund policy:
 - We refund items that arrived damaged or defective. One refund per item.
 - Change of mind, scent preferences and late gifts are not refundable.
 - Refunds for more than one item per order, or over $20, need a human to review: escalate those.`;
 
-// Guardrails the fixed build enforces in code, whatever the model decides.
 const MAX_AUTO_REFUNDS_PER_ORDER = 1;
 const MAX_AUTO_REFUND_CENTS = 2_000;
 
@@ -39,11 +37,10 @@ const tools: OpenAI.Responses.Tool[] = [
 ];
 
 export function createSupportBot(opts: {
-  mode: StoreMode;
-  orders: Map<string, StoreOrder>;
+  openai: { apiKey: string; model: string };
   refundItem: (order: StoreOrder, sku: string, via: RefundChannel) => Promise<RefundOutcome>;
 }) {
-  const openai = new OpenAI({ apiKey: config.openaiApiKey });
+  const openai = new OpenAI({ apiKey: opts.openai.apiKey });
   const lastResponse = new Map<string, string>();
 
   function instructions(order: StoreOrder) {
@@ -56,17 +53,14 @@ This customer's order: ${order.id}. Items: ${items}. Already refunded: ${refunde
 Reply in two sentences or fewer.`;
   }
 
-  // Original build: the policy lives only in the prompt, so the model is the only guardrail.
-  // Fixed build: the same tool, but the rules are checked in code before money moves.
+  // The refund rules are checked in code before money moves, whatever the model decided.
   async function issueRefund(order: StoreOrder, sku: string): Promise<string> {
-    if (opts.mode === "fixed") {
-      const line = order.items.find((i) => i.sku === sku);
-      const botRefunds = order.refunds.filter((r) => r.via === "support-bot");
-      if (!line) return "REFUSED: that item isn't in this order.";
-      if (order.refunds.some((r) => r.sku === sku)) return "REFUSED: that item was already refunded.";
-      if (botRefunds.length >= MAX_AUTO_REFUNDS_PER_ORDER || Math.round(Number(line.price) * 100) > MAX_AUTO_REFUND_CENTS) {
-        return "NOT ALLOWED: this needs a human. Call escalate_to_human instead.";
-      }
+    const line = order.items.find((i) => i.sku === sku);
+    const botRefunds = order.refunds.filter((r) => r.via === "support-bot");
+    if (!line) return "REFUSED: that item isn't in this order.";
+    if (order.refunds.some((r) => r.sku === sku)) return "REFUSED: that item was already refunded.";
+    if (botRefunds.length >= MAX_AUTO_REFUNDS_PER_ORDER || Math.round(Number(line.price) * 100) > MAX_AUTO_REFUND_CENTS) {
+      return "NOT ALLOWED: this needs a human. Call escalate_to_human instead.";
     }
     const outcome = await opts.refundItem(order, sku, "support-bot");
     return outcome.ok ? `Refunded $${outcome.amount} (refund ${outcome.refundId}).` : `Refund failed: ${outcome.error}`;
@@ -74,7 +68,7 @@ Reply in two sentences or fewer.`;
 
   async function chat(order: StoreOrder, message: string): Promise<string> {
     let response = await openai.responses.create({
-      model: config.openaiModel,
+      model: opts.openai.model,
       reasoning: { effort: "low" },
       instructions: instructions(order),
       previous_response_id: lastResponse.get(order.id),
@@ -95,7 +89,7 @@ Reply in two sentences or fewer.`;
         outputs.push({ type: "function_call_output", call_id: call.call_id, output: result });
       }
       response = await openai.responses.create({
-        model: config.openaiModel,
+        model: opts.openai.model,
         reasoning: { effort: "low" },
         instructions: instructions(order),
         previous_response_id: response.id,

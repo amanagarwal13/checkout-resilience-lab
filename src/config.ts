@@ -15,4 +15,5 @@ export const config = {
   paypalClientSecret: required("PAYPAL_CLIENT_SECRET"),
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-5-mini",
+  openaiInvestigatorModel: process.env.OPENAI_INVESTIGATOR_MODEL ?? "gpt-5.5",
 };

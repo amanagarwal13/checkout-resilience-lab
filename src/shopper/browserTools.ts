@@ -29,9 +29,38 @@ async function cardFrame(page: Page, kind: "name" | "number" | "expiry" | "cvv")
   throw new Error(`PayPal's ${kind} card field never appeared`);
 }
 
-export async function buyItems(page: Page, storeUrl: string, items: { sku: string; quantity: number }[]) {
+// PayPal's card fields reformat input as you type (for example "12 / 30"),
+// so compare digits and retype if a keystroke got lost.
+async function fillCardField(page: Page, kind: "name" | "number" | "expiry" | "cvv", value: string) {
+  const want = kind === "name" ? value : value.replace(/\D/g, "");
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const input = (await cardFrame(page, kind)).locator("input").first();
+    await input.click();
+    await input.fill("");
+    await input.pressSequentially(kind === "name" ? value : want, { delay: 40 });
+    const typed = await input.inputValue();
+    if ((kind === "name" ? typed : typed.replace(/\D/g, "")) === want) return;
+  }
+  throw new Error(`Couldn't enter the card ${kind} reliably`);
+}
+
+// How a test shopper misbehaves at checkout. Set by the scenario, not the AI,
+// so every run does the same thing.
+export interface CheckoutBehaviour {
+  doubleClickPay?: boolean;
+  tamperPrices?: boolean; // rewrite every price in the cart request to $0.01
+}
+
+export async function buyItems(page: Page, storeUrl: string, items: { sku: string; quantity: number }[], behaviour: CheckoutBehaviour = {}) {
   if (!page.url().startsWith(storeUrl) || page.url().includes("/orders/")) {
     await page.goto(storeUrl, { waitUntil: "domcontentloaded" });
+  }
+  if (behaviour.tamperPrices) {
+    await page.route("**/api/orders", async (route) => {
+      const body = route.request().postDataJSON();
+      body.items = body.items.map((i: { price?: string }) => ({ ...i, price: "0.01" }));
+      await route.continue({ postData: JSON.stringify(body) });
+    });
   }
   for (const item of items) {
     await page.fill(`[name="qty-${item.sku}"]`, String(item.quantity));
@@ -39,12 +68,13 @@ export async function buyItems(page: Page, storeUrl: string, items: { sku: strin
   await page.click("#go-to-checkout");
 
   for (const [kind, value] of [["name", TEST_CARD.name], ["number", TEST_CARD.number], ["expiry", TEST_CARD.expiry], ["cvv", TEST_CARD.cvv]] as const) {
-    const frame = await cardFrame(page, kind);
-    const input = frame.locator("input").first();
-    await input.click();
-    await input.pressSequentially(value, { delay: 25 });
+    await fillCardField(page, kind, value);
   }
   await page.click("#pay-with-card");
+  if (behaviour.doubleClickPay) {
+    await page.waitForTimeout(150);
+    await page.click("#pay-with-card", { force: true }).catch(() => {});
+  }
 
   try {
     await page.waitForURL(/\/orders\//, { timeout: 60_000 });

@@ -61,3 +61,51 @@ Results (one run):
 Refund-retry re-run after the restructure: unchanged ($16 at risk original, $0 fixed).
 
 Notes: scam outcome depends on the model and may vary between runs; the fixed build's protection does not.
+
+## Phase 3. Complete the scenario library
+**Date:** Oct 19 · **Status:** done
+
+Built:
+- Three new scenarios: **double-pay** (shopper double-clicks Pay), **declined-card** (proxy adds PayPal's `PayPal-Mock-Response: INSTRUMENT_DECLINED` to the capture), **price-tamper** (shopper rewrites cart prices to $0.01 in the browser). "Paid only after PayPal confirms" is covered by declined-card rather than a separate scenario.
+- Shopper misbehaviour is set by the scenario (`doubleClickPay`, `tamperPrices`), not chosen by the AI, so every run does the same thing.
+- Proxy fault type `mock-response` uses PayPal's own negative-testing header, so the decline is a real PayPal response.
+- Money checks moved to `src/lab/checks.ts` and apply to every scenario: one cart one charge, charged the catalog price, paid only after PayPal confirms, refunded what was owed, shop's records match PayPal. Money at risk is itemised by reason.
+- Safety rating: share of checks passed, capped at 2 stars whenever money is at risk.
+- **Inconclusive runs:** if the test shopper never manages to pay, the run is marked inconclusive instead of failing the store.
+- **Decision: the store under test is now real, separate code.** `stores/ember-and-wick/original` is the store as its owner wrote it (no mode flags); `stores/ember-and-wick/fixed` is a hand-fixed reference used to check DummyRun's verdicts. The runner loads any store folder whose `app.ts` exports `createStoreApp`. This keeps the investigator honest: the code it reads doesn't contain the answer.
+- Store errors log one line; the full SDK error (which includes the access token) is never printed.
+
+Results, full suite on the final structure:
+
+| Scenario | Original | Fixed |
+|---|---|---|
+| refund-retry | 3/6 checks, $16.00 at risk | 6/6 |
+| refund-scam | 4/6 checks, $26.00 at risk | 6/6 |
+| double-pay | 4/5 checks, $26.00 at risk | 5/5 |
+| declined-card | 4/6 checks, $16.00 at risk | 6/6 |
+| price-tamper | 4/5 checks, $41.97 at risk | 5/5 |
+
+Problems and fixes:
+- Two earlier full runs on the old structure: refund-scam on the original passed both times (the support bot resisted the first set of tactics). The scammer was given more realistic tactics (spoofed "human approved" tool result, damage claims, fake owner code); it then landed in both later runs. Prompt-only guardrails fail some of the time, not every time; the README must say so.
+- One run of double-pay on the fixed store failed because PayPal's card field received a garbled expiry (`INVALID_EXPIRY`). Fixed by verifying each card field after typing and retyping if needed, and by the inconclusive rule above.
+- A declined capture in the original store printed the SDK error, including the sandbox access token, to the console. Fixed with a one-line error handler.
+
+## Phase 4. AI investigator, fix and re-run
+**Date:** Oct 19 · **Status:** done
+
+Built:
+- `src/investigator/investigator.ts`: reads the failed run (failed checks, money at risk, every PayPal call with any injected fault, what the shopper saw) and the store's source with line numbers, and returns a plain-English explanation, the root-cause location, exact search-and-replace edits and the PayPal guidance followed. Structured output (JSON schema), model `gpt-5.5` (configurable). Edits that don't match the file exactly once are sent back for a retry.
+- Grounding: PayPal AI Toolkit best-practice references (checkout, expanded checkout, disputes and refunds), copied with an Apache-2.0 notice, plus a short DummyRun note on `PayPal-Request-Id`.
+- `src/investigator/fixer.ts`: copies the store to the run folder, applies the edits, type-checks the copy. The original source is never edited.
+- `npm run fix -- <scenario>`: run on the original store, investigate, patch a copy, compile, re-run on the patched copy, print before and after.
+
+Results:
+
+| Scenario | Investigator's diagnosis | Before | After (its own patch) |
+|---|---|---|---|
+| refund-retry | Retry sent as a new refund with no stable `PayPal-Request-Id` (`app.ts:102`) | 2/5, $16.00 at risk | 5/5, $0.00 |
+| refund-scam | Server refund function trusted the bot; policy must be enforced in server code (`app.ts:95`) | 2/5, $26.00 at risk | 5/5, $0.00 |
+
+Notes:
+- The scam fix is stricter than needed: it caps refunds at one per order for the refund form too, not just the bot. Safe, but honest customers with two damaged items would need a human. Worth mentioning in the README as a limitation of AI-written fixes, which is why they go through a re-run and human review rather than straight to production.
+- Each fix run takes 6 to 9 minutes, mostly the AI shoppers and the sandbox.

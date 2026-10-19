@@ -1,23 +1,16 @@
 import axios, { type AxiosAdapter } from "axios";
-import {
-  Client,
-  Environment,
-  OrdersController,
-  PaymentsController,
-} from "@paypal/paypal-server-sdk";
-import { PAYPAL_SANDBOX_API } from "../config.js";
+import { Client, Environment, OrdersController, PaymentsController } from "@paypal/paypal-server-sdk";
 
-export interface PayPalClientOptions {
+const PAYPAL_SANDBOX_API = "https://api-m.sandbox.paypal.com";
+
+export interface PayPalOptions {
   clientId: string;
   clientSecret: string;
-  // When set, every SDK request goes to this base URL instead of PayPal's sandbox.
-  // DummyRun uses it to sit between a store and PayPal.
+  // Optional: send every SDK request to this base URL instead of PayPal's
+  // sandbox. This is the one setting DummyRun needs to sit in between.
   apiBase?: string;
 }
 
-// The SDK hard-codes PayPal's hosts, but passes `unstable_httpClientOptions`
-// straight to axios. A custom adapter rewrites the host and hands the request
-// to axios's normal HTTP adapter, so nothing else about the SDK changes.
 function redirectingAdapter(apiBase: string): AxiosAdapter {
   const httpAdapter = axios.getAdapter("http");
   return (requestConfig) => {
@@ -28,20 +21,15 @@ function redirectingAdapter(apiBase: string): AxiosAdapter {
   };
 }
 
-export function createPayPal({ clientId, clientSecret, apiBase }: PayPalClientOptions) {
+export function createPayPal({ clientId, clientSecret, apiBase }: PayPalOptions) {
   const client = new Client({
     clientCredentialsAuthCredentials: { oAuthClientId: clientId, oAuthClientSecret: clientSecret },
     environment: Environment.Sandbox,
     timeout: 30_000,
     ...(apiBase ? { unstable_httpClientOptions: { adapter: redirectingAdapter(apiBase) } } : {}),
   });
-  return {
-    orders: new OrdersController(client),
-    payments: new PaymentsController(client),
-  };
+  return { orders: new OrdersController(client), payments: new PaymentsController(client) };
 }
-
-export type PayPal = ReturnType<typeof createPayPal>;
 
 export function isTimeout(error: unknown): boolean {
   if (!(error instanceof Error)) return false;

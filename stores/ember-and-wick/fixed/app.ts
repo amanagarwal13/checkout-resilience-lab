@@ -1,12 +1,9 @@
 import { Hono } from "hono";
 import { ApiError, CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
-import { catalog, findProduct, fromCents, toCents } from "./catalog.js";
+import { findProduct, fromCents, toCents } from "./catalog.js";
 import { orderPage, shopPage } from "./pages.js";
+import { createPayPal, isTimeout, type PayPalOptions } from "./paypal.js";
 import { createSupportBot } from "./supportBot.js";
-import { createPayPal, isTimeout, type PayPalClientOptions } from "../paypal/client.js";
-
-// "original" ships the bug DummyRun should catch; "fixed" is the same store after the fix.
-export type StoreMode = "original" | "fixed";
 
 export interface StoreOrder {
   id: string; // PayPal order ID
@@ -23,32 +20,46 @@ export type RefundOutcome =
   | { ok: false; status: 400 | 402 | 404 | 409 | 502 | 504; error: string };
 
 export interface StoreOptions {
-  mode: StoreMode;
-  paypal: PayPalClientOptions;
+  paypal: PayPalOptions;
+  openai: { apiKey: string; model: string };
   refundTimeoutMs?: number;
 }
 
-export function createStoreApp({ mode, paypal: paypalOptions, refundTimeoutMs = 4_000 }: StoreOptions) {
+export function createStoreApp({ paypal: paypalOptions, openai, refundTimeoutMs = 4_000 }: StoreOptions) {
   const paypal = createPayPal(paypalOptions);
   const orders = new Map<string, StoreOrder>();
   const app = new Hono();
 
-  app.get("/", (c) => c.html(shopPage({ clientId: paypalOptions.clientId, mode })));
+  // Log one line, never the full SDK error: it carries the request headers,
+  // including the PayPal access token.
+  app.onError((error, c) => {
+    const status = error instanceof ApiError ? ` (PayPal ${error.statusCode})` : "";
+    console.error(`[store] ${c.req.method} ${c.req.path} failed: ${error.name}${status}`);
+    return c.json({ error: "Something went wrong" }, 500);
+  });
+
+  app.get("/", (c) => c.html(shopPage({ clientId: paypalOptions.clientId })));
+
+  // One PayPal order per checkout attempt, so a double-submitted payment
+  // reuses the order instead of creating and charging a second one.
+  const ordersByCheckout = new Map<string, string>();
 
   app.post("/api/orders", async (c) => {
-    const { items } = await c.req.json<{ items: { sku: string; quantity: number }[] }>();
-    // Prices always come from the server-side catalog, never from the browser.
+    const { items, checkoutId } = await c.req.json<{ items: { sku: string; quantity: number }[]; checkoutId?: string }>();
+    if (checkoutId && ordersByCheckout.has(checkoutId)) return c.json({ id: ordersByCheckout.get(checkoutId) });
     const lines = items
       .filter((i) => i.quantity > 0)
       .map((i) => {
         const product = findProduct(i.sku);
         if (!product) throw new Error(`Unknown product ${i.sku}`);
+        // Prices only ever come from the server-side catalog, never the browser.
         return { sku: product.sku, name: product.name, price: product.price, quantity: Math.min(Math.floor(i.quantity), 10) };
       });
     if (lines.length === 0) return c.json({ error: "Your cart is empty" }, 400);
     const total = fromCents(lines.reduce((sum, l) => sum + toCents(l.price) * l.quantity, 0));
 
     const { result } = await paypal.orders.createOrder({
+      ...(checkoutId ? { paypalRequestId: `create-${checkoutId}` } : {}),
       body: {
         intent: CheckoutPaymentIntent.Capture,
         purchaseUnits: [
@@ -64,21 +75,36 @@ export function createStoreApp({ mode, paypal: paypalOptions, refundTimeoutMs = 
         ],
       },
     });
-    orders.set(result.id!, { id: result.id!, items: lines, total, status: "CREATED", refunds: [] });
+    if (!orders.has(result.id!)) orders.set(result.id!, { id: result.id!, items: lines, total, status: "CREATED", refunds: [] });
+    if (checkoutId) ordersByCheckout.set(checkoutId, result.id!);
     return c.json({ id: result.id });
   });
 
   app.post("/api/orders/:id/capture", async (c) => {
     const order = orders.get(c.req.param("id"));
     if (!order) return c.json({ error: "Order not found" }, 404);
-    const { result } = await paypal.orders.captureOrder({ id: order.id });
-    const capture = result.purchaseUnits?.[0]?.payments?.captures?.[0];
-    if (result.status !== "COMPLETED" || !capture?.id) {
-      return c.json({ error: `Payment not completed (${result.status})` }, 402);
+    if (order.status === "PAID") return c.json({ id: order.id, status: order.status });
+    try {
+      const { result } = await paypal.orders.captureOrder({ id: order.id, paypalRequestId: `capture-${order.id}` });
+      const capture = result.purchaseUnits?.[0]?.payments?.captures?.[0];
+      // Mark the order paid only once PayPal confirms the money arrived.
+      if (result.status !== "COMPLETED" || capture?.status !== "COMPLETED" || !capture.id) {
+        return c.json({ error: "Your payment didn't go through. Please try a different card." }, 402);
+      }
+      order.status = "PAID";
+      order.captureId = capture.id;
+      return c.json({ id: order.id, status: order.status });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        const issue = (error.result as { details?: { issue?: string }[] } | undefined)?.details?.[0]?.issue;
+        const message =
+          issue === "INSTRUMENT_DECLINED"
+            ? "Your card was declined. Please try a different card."
+            : "We couldn't complete your payment. Please try again.";
+        return c.json({ error: message, issue }, 402);
+      }
+      throw error;
     }
-    order.status = "PAID";
-    order.captureId = capture.id;
-    return c.json({ id: order.id, status: order.status });
   });
 
   app.get("/api/orders/:id", (c) => {
@@ -92,7 +118,6 @@ export function createStoreApp({ mode, paypal: paypalOptions, refundTimeoutMs = 
   });
 
   // Refund one item. Shared by the refund form and the support bot.
-  // This is where the two builds differ.
   async function refundItem(order: StoreOrder, sku: string, via: RefundChannel): Promise<RefundOutcome> {
     if (!order.captureId) return { ok: false, status: 404, error: "Order not found or not paid" };
     const line = order.items.find((i) => i.sku === sku);
@@ -103,9 +128,9 @@ export function createStoreApp({ mode, paypal: paypalOptions, refundTimeoutMs = 
         {
           captureId: order.captureId,
           body: { amount: { currencyCode: "USD", value: line.price } },
-          // The fix: one stable request ID per refunded item, so a retry
-          // returns the refund PayPal already made instead of making another.
-          ...(mode === "fixed" ? { paypalRequestId: `refund-${order.id}-${sku}` } : {}),
+          // One stable request ID per refunded item: a retry returns the
+          // refund PayPal already made instead of making another.
+          paypalRequestId: `refund-${order.id}-${sku}`,
         },
         { abortSignal: AbortSignal.timeout(refundTimeoutMs) },
       );
@@ -128,7 +153,7 @@ export function createStoreApp({ mode, paypal: paypalOptions, refundTimeoutMs = 
     return outcome.ok ? c.json(outcome) : c.json({ error: outcome.error }, outcome.status);
   });
 
-  const supportBot = createSupportBot({ mode, orders, refundItem });
+  const supportBot = createSupportBot({ openai, refundItem });
   app.post("/api/orders/:id/support", async (c) => {
     const order = orders.get(c.req.param("id"));
     if (!order) return c.json({ error: "Order not found" }, 404);
@@ -136,5 +161,5 @@ export function createStoreApp({ mode, paypal: paypalOptions, refundTimeoutMs = 
     return c.json({ reply: await supportBot.chat(order, String(message ?? "").slice(0, 2_000)) });
   });
 
-  return { app, orders, mode, catalog };
+  return { app, orders };
 }

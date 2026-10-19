@@ -1,5 +1,5 @@
 import { catalog } from "./catalog.js";
-import type { StoreMode, StoreOrder } from "./app.js";
+import type { StoreOrder } from "./app.js";
 
 const styles = `
   :root { --ink:#2b2420; --muted:#7a6e66; --line:#e8e1da; --bg:#fbf8f5; --accent:#9a4a1e; }
@@ -32,10 +32,10 @@ function layout(title: string, body: string, head = "") {
 <body><header><h1>Ember and Wick</h1><span>Hand-poured candles</span></header><main>${body}</main></body></html>`;
 }
 
-export function shopPage({ clientId, mode }: { clientId: string; mode: StoreMode }) {
+export function shopPage({ clientId }: { clientId: string }) {
   const products = catalog
     .map(
-      (p) => `<div class="card" data-sku="${p.sku}">
+      (p) => `<div class="card" data-sku="${p.sku}" data-price="${p.price}">
   <h2>${p.name}</h2><p>${p.description}</p>
   <div style="display:flex;justify-content:space-between;align-items:center">
     <span class="price">$${p.price}</span>
@@ -60,30 +60,37 @@ export function shopPage({ clientId, mode }: { clientId: string; mode: StoreMode
   <div id="paypal-button"></div>
   <p id="checkout-message" class="notice" role="status"></p>
 </section>
-<p style="margin-top:24px;color:var(--muted);font-size:12px">Store build: ${mode}</p>
 <script src="${sdk}"></script>
 <script>
   const message = document.getElementById("checkout-message");
+  const payButton = document.getElementById("pay-with-card");
   function cart() {
     return [...document.querySelectorAll("[data-sku]")].map((el) => ({
       sku: el.dataset.sku,
+      price: el.dataset.price,
       quantity: Number(el.querySelector("input").value || 0),
     }));
   }
+  async function readJson(res) {
+    try { return await res.json(); } catch { return { error: "Something went wrong (" + res.status + ")" }; }
+  }
   async function createOrder() {
     const res = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: cart() }) });
-    const data = await res.json();
+    const data = await readJson(res);
     if (!res.ok) throw new Error(data.error || "Could not start checkout");
     return data.id;
   }
   async function onApprove(data) {
-    message.textContent = "Confirming your payment…";
+    message.className = "notice"; message.textContent = "Confirming your payment…";
     const res = await fetch("/api/orders/" + data.orderID + "/capture", { method: "POST" });
-    const result = await res.json();
-    if (!res.ok) { message.className = "notice error"; message.textContent = result.error; return; }
+    const result = await readJson(res);
+    if (!res.ok) { showError(result.error); return; }
     location.href = "/orders/" + result.id;
   }
-  function onError(err) { message.className = "notice error"; message.textContent = "Payment failed: " + (err && err.message ? err.message : err); }
+  function showError(text) {
+    message.className = "notice error"; message.textContent = text;
+  }
+  function onError(err) { showError("Payment failed: " + (err && err.message ? err.message : err)); }
 
   document.getElementById("go-to-checkout").addEventListener("click", () => {
     document.getElementById("checkout").style.display = "block";
@@ -95,12 +102,12 @@ export function shopPage({ clientId, mode }: { clientId: string; mode: StoreMode
     cardFields.NumberField().render("#card-number");
     cardFields.ExpiryField().render("#card-expiry");
     cardFields.CVVField().render("#card-cvv");
-    document.getElementById("pay-with-card").addEventListener("click", () => {
+    payButton.addEventListener("click", () => {
       message.className = "notice"; message.textContent = "Processing…";
       cardFields.submit().catch(onError);
     });
   } else {
-    document.getElementById("pay-with-card").disabled = true;
+    payButton.disabled = true;
     message.textContent = "Card payments aren't available for this store.";
   }
   paypal.Buttons({ createOrder, onApprove, onError }).render("#paypal-button");
