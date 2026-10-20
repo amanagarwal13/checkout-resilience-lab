@@ -16,6 +16,6 @@ const store = createStoreApp({
   openai: { apiKey: config.openaiApiKey, model: config.openaiModel },
 });
 
-serve({ fetch: store.app.fetch, port: 0 }, (info) => {
+serve({ fetch: store.app.fetch, port: 0, hostname: "127.0.0.1" }, (info) => {
   process.stdout.write(`${JSON.stringify({ port: info.port })}\n`);
 });

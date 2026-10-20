@@ -125,7 +125,8 @@ export function createPayPalProxy({ port, upstream = PAYPAL_SANDBOX_API }: { por
       return `http://localhost:${typeof address === "object" && address ? address.port : port}`;
     },
     log,
-    listen: () => new Promise<void>((resolve) => server.listen(port, resolve)),
+    // Loopback only: the store under test is on this machine, and nothing outside should reach PayPal through DummyRun.
+    listen: () => new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve)),
     close: () => new Promise<void>((resolve) => { server.closeAllConnections(); server.close(() => resolve()); }),
     setRules(next: FaultRule[]) { rules = next.map((r) => ({ ...r })); },
     reset() { rules = []; log.length = 0; },

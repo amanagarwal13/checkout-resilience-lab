@@ -164,7 +164,7 @@ async function startExample(storeDir: string, apiBase: string, logFile: string) 
     }
   });
   const front = await new Promise<ReturnType<typeof serve>>((ok) => {
-    const s = serve({ fetch: app.fetch, port: 0 }, () => ok(s));
+    const s = serve({ fetch: app.fetch, port: 0, hostname: "127.0.0.1" }, () => ok(s));
   });
   const url = `http://localhost:${(front.address() as AddressInfo).port}`;
   return { url, stop: () => { front.close(); server.kill(); log.end(); } };
