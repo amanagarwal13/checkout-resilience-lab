@@ -1,10 +1,7 @@
+import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import type { AddressInfo } from "node:net";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
-import { serve } from "@hono/node-server";
-import type { Hono } from "hono";
-import { config } from "../config.js";
+import { fileURLToPath } from "node:url";
 import { runShopper, type ShopperStep } from "../shopper/shopper.js";
 import { judge, type Evidence, type Verdict } from "./checks.js";
 import { moneyForOrder } from "./paypalDirect.js";
@@ -35,12 +32,25 @@ export interface RunResult {
   videoPath?: string;
 }
 
-interface StoreModule {
-  createStoreApp(options: {
-    paypal: { clientId: string; clientSecret: string; apiBase?: string };
-    openai: { apiKey: string; model: string };
-    refundTimeoutMs?: number;
-  }): { app: Hono; orders: Map<string, StoreOrder> };
+const STORE_HOST = fileURLToPath(new URL("./storeHost.ts", import.meta.url));
+
+// Starts the store in its own process so its code is read fresh from disk.
+function startStore(dir: string, apiBase: string): Promise<{ port: number; stop: () => void }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["--import", "tsx", STORE_HOST, dir, apiBase, String(STORE_TIMEOUT_MS)], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stderr = "";
+    child.stderr.on("data", (d: Buffer) => { stderr += d; process.stderr.write(d); });
+    child.stdout.once("data", (d: Buffer) => {
+      try {
+        resolve({ port: JSON.parse(d.toString().split("\n")[0]).port, stop: () => child.kill() });
+      } catch {
+        reject(new Error(`The store didn't start: ${d}`));
+      }
+    });
+    child.once("exit", (code) => reject(new Error(`The store exited before starting (code ${code}): ${stderr.slice(-500)}`)));
+  });
 }
 
 // Runs one scenario against one store and judges the money.
@@ -48,11 +58,10 @@ export async function runScenario(opts: {
   scenario: Scenario;
   store: StoreUnderTest;
   proxy: PayPalProxy;
-  port?: number; // 0 or omitted: any free port
   runDir: string;
   onEvent?: (event: RunEvent) => void;
 }): Promise<RunResult> {
-  const { scenario, store: target, proxy, port } = opts;
+  const { scenario, store: target, proxy } = opts;
   const emit = opts.onEvent ?? (() => {});
   emit({ type: "started", scenario: scenario.id, store: target.label });
 
@@ -60,22 +69,14 @@ export async function runScenario(opts: {
   proxy.setRules(scenario.faults);
   const unsubscribe = proxy.onEntry((entry) => emit({ type: "paypal", entry }));
 
-  const { createStoreApp } = (await import(pathToFileURL(join(target.dir, "app.ts")).href)) as StoreModule;
-  const store = createStoreApp({
-    refundTimeoutMs: STORE_TIMEOUT_MS,
-    paypal: { clientId: config.paypalClientId, clientSecret: config.paypalClientSecret, apiBase: proxy.url },
-    openai: { apiKey: config.openaiApiKey, model: config.openaiModel },
-  });
-  const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
-    const s = serve({ fetch: store.app.fetch, port: port ?? 0 }, () => resolve(s));
-  });
-  const storePort = (server.address() as AddressInfo).port;
+  const host = await startStore(target.dir, proxy.url);
+  const storeUrl = `http://localhost:${host.port}`;
   const dir = join(opts.runDir, scenario.id, target.label);
   mkdirSync(dir, { recursive: true });
 
   try {
     const shopper = await runShopper({
-      storeUrl: `http://localhost:${storePort}`,
+      storeUrl,
       persona: scenario.persona,
       behaviour: scenario.behaviour,
       videoDir: dir,
@@ -97,7 +98,10 @@ export async function runScenario(opts: {
       [...orderIds].map(async (orderId) => ({
         orderId,
         money: await moneyForOrder(orderId).catch(() => undefined),
-        storeOrder: store.orders.get(orderId),
+        // What the shop believes, asked over its own API like any other client.
+        storeOrder: await fetch(`${storeUrl}/api/orders/${orderId}`)
+          .then((r) => (r.ok ? (r.json() as Promise<StoreOrder>) : undefined))
+          .catch(() => undefined),
       })),
     );
     const evidence: Evidence = { shopper, orders };
@@ -109,6 +113,6 @@ export async function runScenario(opts: {
     return result;
   } finally {
     unsubscribe();
-    server.close();
+    host.stop();
   }
 }

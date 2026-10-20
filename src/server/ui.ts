@@ -414,8 +414,17 @@ $("run").addEventListener("click", async () => {
 (async () => {
   state.scenarios = await (await fetch("/api/scenarios")).json();
   await loadHistory();
-  const latest = state.history[0];
-  if (latest) openRun(await (await fetch("/api/runs/" + latest.id)).json()); else render();
-  pollFrames(); tickClocks();
+  const wanted = new URLSearchParams(location.search).get("run");
+  const first = state.history.find((r) => r.id === wanted) || state.history[0];
+  if (first) openRun(await (await fetch("/api/runs/" + first.id)).json()); else render();
+  pollFrames(); tickClocks(); followNewRuns();
 })();
+
+// A run started elsewhere (a coding agent over MCP, another tab) opens here as soon as it begins.
+async function followNewRuns() {
+  await loadHistory().catch(() => {});
+  const latest = state.history[0];
+  if (latest && !latest.finishedAt && (!state.run || state.run.id !== latest.id)) openRun(await (await fetch("/api/runs/" + latest.id)).json());
+  setTimeout(followNewRuns, 4000);
+}
 `;

@@ -188,3 +188,16 @@ Built: 15 tests with Node's test runner (`npm test`, also in CI), no PayPal or O
 - **Proxy** (3), against a fake PayPal: forwarding and logging, `delay-response` (PayPal processes the refund while the store times out; the retry goes straight through), `mock-response` (PayPal's negative-testing header reaches PayPal).
 - **SDK redirect** (1): with `apiBase` set, the official PayPal Server SDK sends both the token request and the API call to DummyRun.
 - **Spending limits** (1) and **investigator edits** (2): edits must match exactly once, fixes go into a copy, and replacement text is applied literally.
+
+## Phase 13. Coding-agent integration over MCP
+**Date:** Oct 20 · **Status:** done (scripted client); a live Claude Code session is still to be recorded for the video
+
+Built:
+- `src/mcp/server.ts`: an MCP server at `/mcp` on the lab server (Streamable HTTP, stateless, JSON responses). Tools: `list_scenarios`, `start_crash_test` (returns a run id and a link to watch live), `get_crash_test` (waits up to 50 seconds per call), `get_test_evidence`, `diagnose_failure` (the investigator's explanation, location and exact edits with repo-relative paths; changes nothing) and `verify_fix_in_copy`.
+- Every crash test now starts the store in its own process (`src/lab/storeHost.ts`), so its code is read fresh from disk. A fix the coding agent saves is exactly what the next test runs. Ports are picked by the OS, so the CLI, evals and lab can run side by side.
+- `lab.diagnose()`: the investigator on its own, cached on the lane.
+- Lab page: `/?run=<id>` opens that run, and a run started elsewhere (by an agent) opens by itself, so the browser shows the shoppers while the agent works.
+- `.claude/commands/crash-test.md` (`/crash-test` in Claude Code), setup lines for Claude Code, Cursor and Codex in the README, `scripts/mcp-loop.ts`, which plays the agent's part.
+- MCP calls share the demo's spending limits (200 an hour per visitor, 2,000 a day).
+
+Verified: `scripts/mcp-loop.ts refund-retry` over MCP against the store in the working copy. Before: rating 2/5, $16.00 at risk (PayPal refunded twice). The diagnosis pointed at `stores/ember-and-wick/original/app.ts:101`; the edits were applied to the file; the re-run scored 5/5 with $0.00 at risk. The store was then restored with `git checkout` so the demo still shows the bug. 15 unit tests pass.

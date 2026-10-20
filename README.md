@@ -51,6 +51,40 @@ npm run crash -- refund-retry original  # one scenario, one build
 npm run fix -- refund-scam              # crash-test, investigate, patch a copy, re-run
 ```
 
+## Use it from your coding agent
+
+With the lab running (`npm start`), DummyRun is also an MCP server at `http://localhost:3000/mcp`. Your coding agent can crash-test the checkout, read the evidence, get the fix as edits, apply them to your files and run the test again. Each test starts the store fresh from your folder, so the re-run tests exactly what the agent saved.
+
+```bash
+claude mcp add --transport http dummyrun http://localhost:3000/mcp
+```
+
+Cursor (`.cursor/mcp.json`) and other clients that take a URL:
+
+```json
+{ "mcpServers": { "dummyrun": { "url": "http://localhost:3000/mcp" } } }
+```
+
+Codex (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.dummyrun]
+url = "http://localhost:3000/mcp"
+```
+
+Then ask: *"Crash-test my PayPal checkout, fix what fails, and run it again."* In Claude Code, `/crash-test` does the same. The browser tab on http://localhost:3000 switches to each run as the agent starts it, so you can watch the shoppers while the agent works.
+
+| Tool | What it does |
+| --- | --- |
+| `list_scenarios` | The failures DummyRun can throw at the checkout |
+| `start_crash_test` | Starts a run and returns its id and a link to watch it live |
+| `get_crash_test` | Waits for the results: rating, money at risk, failed checks |
+| `get_test_evidence` | Every PayPal call with any injected fault, and what the shopper did |
+| `diagnose_failure` | The investigator's explanation, the line at fault and the fix as exact edits; changes nothing |
+| `verify_fix_in_copy` | Applies the fix to a copy and re-runs, leaving your files alone |
+
+`npx tsx scripts/mcp-loop.ts refund-retry` plays the agent's part from a script. Restore the demo store afterwards with `git checkout -- stores/ember-and-wick/original`.
+
 ## How it works
 
 ```

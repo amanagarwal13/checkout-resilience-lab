@@ -11,11 +11,10 @@ const selected = args.some((a) => ids.includes(a)) ? scenarios.filter((s) => arg
 const labels = (["original", "fixed"] as const).filter((m) => !args.some((a) => a === "original" || a === "fixed") || args.includes(m));
 
 const runDir = join("runs", new Date().toISOString().replace(/[:.]/g, "-"));
-const proxy = createPayPalProxy({ port: 4020 });
+const proxy = createPayPalProxy({ port: 0 });
 await proxy.listen();
 
 const results: RunResult[] = [];
-let port = 4200;
 for (const scenario of selected) {
   for (const label of labels) {
     console.log(`\n=== ${scenario.title} · store "${label}" ===`);
@@ -23,7 +22,6 @@ for (const scenario of selected) {
       scenario,
       store: { label, dir: storeBuilds[label] },
       proxy,
-      port: port++,
       runDir,
       onEvent: (e) => {
         if (e.type === "step") {

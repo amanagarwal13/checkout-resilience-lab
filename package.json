@@ -10,12 +10,14 @@
     "dev": "tsx src/dev.ts",
     "crash": "tsx src/lab/crash.ts",
     "fix": "tsx src/lab/fix.ts",
+    "eval": "tsx src/lab/eval.ts",
     "smoke": "tsx src/smoke.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@paypal/paypal-server-sdk": "^2.5.0",
     "ag-grid-community": "^36.2.0",
     "ag-grid-react": "^36.2.0",

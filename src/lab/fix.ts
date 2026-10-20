@@ -18,7 +18,7 @@ if (!scenario) {
 }
 
 const runDir = join("runs", new Date().toISOString().replace(/[:.]/g, "-"));
-const proxy = createPayPalProxy({ port: 4030 });
+const proxy = createPayPalProxy({ port: 0 });
 await proxy.listen();
 
 function show(label: string, r: RunResult) {
@@ -29,7 +29,7 @@ function show(label: string, r: RunResult) {
 }
 
 console.log(`=== ${scenario.title} ===`);
-const before = await runScenario({ scenario, store: { label: "original", dir: storeBuilds.original }, proxy, port: 4300, runDir });
+const before = await runScenario({ scenario, store: { label: "original", dir: storeBuilds.original }, proxy, runDir });
 show("Before: original store", before);
 
 if (before.verdict.inconclusive) {
@@ -54,7 +54,7 @@ if (before.verdict.inconclusive) {
     console.log(`\n  The patch doesn't compile, so DummyRun won't run it:\n${compiled.output}`);
   } else {
     console.log("\n  Patch compiles. Re-running the same scenario against the patched store…");
-    const after = await runScenario({ scenario, store: { label: "patched", dir: patchedDir }, proxy, port: 4301, runDir });
+    const after = await runScenario({ scenario, store: { label: "patched", dir: patchedDir }, proxy, runDir });
     show("After: patched store", after);
     console.log(`\n  Safety rating ${before.verdict.rating}/5 → ${after.verdict.rating}/5 · money at risk $${fromCents(before.verdict.atRiskCents)} → $${fromCents(after.verdict.atRiskCents)}`);
   }

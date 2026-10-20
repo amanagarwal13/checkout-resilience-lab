@@ -111,7 +111,7 @@ Phases 3 to 6 were completed on Oct 19; Phase 7's files are ready. See the log.
 - Results recorded in `docs/EVALS.md` and the README.
 
 ### Phase 13. Coding-agent integration over MCP (Oct 23 to 27)
-- `npx dummyrun mcp`: an MCP server that crash-tests the store in the developer's own folder, so a fix their coding agent applies is exactly what gets re-tested.
+- An MCP endpoint (`/mcp` on the lab server) that crash-tests the store in the developer's own folder, so a fix their coding agent applies is exactly what gets re-tested.
 - Tools: list scenarios, run a crash test (returns a link to watch live), get a test's evidence, get the investigator's fix as edits.
 - A hosted MCP endpoint on the deployed demo for judges, and setup lines for Claude Code, Cursor and Codex, plus a Claude Code command next to PayPal's AI Toolkit.
 - Done when: in a coding agent, "crash-test my checkout", "fix it", "run it again" goes from red to green on the real sandbox.

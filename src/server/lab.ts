@@ -24,6 +24,8 @@ export interface Lane {
   paypal: RunResult["proxyLog"];
   result?: RunResult;
   fix?: FixState;
+  // The investigator's diagnosis on its own, for a coding agent to apply to the developer's files.
+  diagnosis?: Diagnosis;
 }
 
 export interface LabRun {
@@ -141,6 +143,18 @@ export function createLab() {
       save(run);
       void execute(run);
       return run;
+    },
+
+    // Investigate a failed lane and return the fix without applying it anywhere.
+    async diagnose(runId: string, laneId: string): Promise<{ diagnosis: Diagnosis; storeDir: string }> {
+      const run = runs.get(runId);
+      const lane = run?.lanes.find((l) => l.scenario === laneId);
+      const scenario = findScenario(laneId);
+      if (!run || !lane?.result || !scenario) throw new Error("That test hasn't finished.");
+      const storeDir = storeBuilds[run.store];
+      lane.diagnosis ??= await investigate(scenario, lane.result, storeDir);
+      save(run);
+      return { diagnosis: lane.diagnosis, storeDir };
     },
 
     // Investigate a failed lane, patch a copy of the store and re-run it.
