@@ -25,10 +25,12 @@ function references() {
     .join("\n\n");
 }
 
-export function readStoreSource(storeDir: string): Record<string, string> {
-  const files: Record<string, string> = {};
-  for (const f of readdirSync(storeDir).filter((f) => f.endsWith(".ts"))) files[f] = readFileSync(join(storeDir, f), "utf8");
-  return files;
+// The store's own code: by default the Ember and Wick layout (every .ts file
+// in the folder), or the files named, as paths relative to the folder.
+export function readStoreSource(storeDir: string, files?: string[]): Record<string, string> {
+  const source: Record<string, string> = {};
+  for (const f of files ?? readdirSync(storeDir).filter((f) => f.endsWith(".ts"))) source[f] = readFileSync(join(storeDir, f), "utf8");
+  return source;
 }
 
 function numbered(source: string) {
@@ -119,12 +121,18 @@ export function validateEdits(edits: Edit[], source: Record<string, string>): st
 }
 
 export async function investigate(scenario: Scenario, result: RunResult, storeDir: string): Promise<Diagnosis> {
+  return investigateEvidence({ evidence: evidenceSummary(scenario, result), source: readStoreSource(storeDir) });
+}
+
+// The same investigator for any store: the evidence of one failed test, the
+// store's source files and, optionally, a note on how the store is laid out.
+export async function investigateEvidence(opts: { evidence: string; source: Record<string, string>; storeNotes?: string }): Promise<Diagnosis> {
   const openai = new OpenAI({ apiKey: config.openaiApiKey });
   const model = config.openaiInvestigatorModel;
-  const source = readStoreSource(storeDir);
+  const { source } = opts;
   const sourceText = Object.entries(source).map(([f, s]) => `=== ${f} ===\n${numbered(s)}`).join("\n\n");
 
-  let input = `EVIDENCE\n${evidenceSummary(scenario, result)}\n\nPAYPAL REFERENCES\n${references()}\n\nSTORE SOURCE\n${sourceText}`;
+  let input = `EVIDENCE\n${opts.evidence}\n\nPAYPAL REFERENCES\n${references()}\n\n${opts.storeNotes ? `ABOUT THIS STORE\n${opts.storeNotes}\n\n` : ""}STORE SOURCE\n${sourceText}`;
   for (let attempt = 1; attempt <= 3; attempt++) {
     const response = await openai.responses.create({
       model,

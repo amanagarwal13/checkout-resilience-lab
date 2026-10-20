@@ -232,3 +232,24 @@ Findings (sandbox, repeated on every run we made):
 Test-harness issue found and fixed on the way: the page shim's keep-alive connections to the example's Express server were sometimes reset. It now sends each request on its own connection and never retries, so every payment request reaches the store exactly once.
 
 Not done: running the investigator on this store (its evidence and prompts assume the Ember and Wick layout), and an AI shopper for it.
+
+## Phase 15. Investigator on PayPal's own example
+**Date:** Oct 20 · **Status:** done
+
+Built:
+- `investigateEvidence()` in `src/investigator/investigator.ts`: the investigator for any store. It takes the evidence, the source files and an optional note on the store's layout. `investigate()` for the demo store now calls it, unchanged. `readStoreSource()` takes a list of files.
+- `copyStore()` copies a list of files with their folders, and a new `syntaxCheck()` runs `node --check` on `.js` files, since plain JavaScript has no compiler (`src/investigator/fixer.ts`). One unit test (18 in total now).
+- `npm run crash:paypal-example -- <scenarios> --investigate`: for each failing scenario, builds the evidence (failed checks, PayPal calls from the proxy log, what the page said, the example server's `console.error` output), runs the investigator on `server.js`, `client/app.js` and `client/index.html` as published, applies its edits to a copy under `runs/paypal-example-investigate/<time>/<scenario>/patched-store`, checks it parses, re-runs the same scenario and prints before and after. Everything goes into `investigation.json`. The copy's import of `sdk/paypal.js` is repointed, since the copy sits deeper in the repo. The investigator never sees the hand-fixed copy.
+- `--store=<dir>`: crash-test any copy of the example, such as a saved patch.
+
+Test-harness bug found and fixed: DummyRun's page server (standing in for the example's Vite dev server) didn't pass cookies between the page and the example's server. Vite's proxy does. One investigator patch kept its checkout ID in a cookie, so it failed for DummyRun's reasons. Cookies now pass both ways. The as-published results are the same as before.
+
+Results (written up in `docs/EVALS.md`), three attempts per failing scenario after the cookie fix:
+- slow-capture: 3 of 3 fixed. Each patch sends a stable `PayPal-Request-Id` on create (from a checkout ID) and on capture (from the order ID).
+- double-pay: 1 of 3 fixed. Same approach, but a double-click puts both create requests in flight at once, and in 2 of 3 runs PayPal's sandbox created two orders under the same `PayPal-Request-Id`.
+- declined-card: 0 of 3. Every patch fixed the server's discarded error, which exposed the client's `actions.restart is not a function` bug. No patch fixed that second layer.
+- 4 of 9 overall, against 13 of 15 on the demo store. All 5 patches that fixed their scenario still passed the control purchase.
+- An earlier attempt, before the cookie fix: double-pay fixed, declined-card missed, slow-capture missed because of the cookie bug. The same patch passed once cookies were forwarded.
+- No `// DummyRun fix` text or credentials in any investigator input (checked with grep over every `investigation.json`).
+
+Not done: a second investigator pass on the re-run's evidence (which would show it the `actions.restart` error), and a note in the idempotency reference that simultaneous requests can race past `PayPal-Request-Id`. Either would likely raise the numbers, so they were left out of this measurement.

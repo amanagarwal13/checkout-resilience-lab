@@ -100,6 +100,7 @@ const client = new Client({ ...yourOptions, ...dummyrun() });   // no effect unl
 ```bash
 npm run crash:paypal-example             # as published
 npm run crash:paypal-example -- --fixed  # with the fixes below
+npm run crash:paypal-example -- double-pay --investigate  # let the AI investigator fix a copy, then re-run
 ```
 
 | Scenario | As published | With the fixes |
@@ -115,6 +116,8 @@ Each "as published" result repeated on every run we made (4 double-click runs, 3
 - **The server discards PayPal's error.** The capture route turns PayPal's `INSTRUMENT_DECLINED` into a generic 500, so the client's documented decline handling never runs. Fix: return PayPal's status and error body.
 - **The client's decline handling then breaks for card payments.** With PayPal's error passed through, the page showed `TypeError: actions.restart is not a function`: the `!data.card` check didn't stop the Buttons-only `restart()` path. Fix: check that `actions.restart` exists.
 - The capture route logs failures as "Failed to create order".
+
+The fixes above were written by hand. The AI investigator, given only the evidence and the example as published, fixed it in 4 of 9 attempts: slow capture 3 of 3, double-click 1 of 3, declined card 0 of 3. The misses are written up in [docs/EVALS.md](docs/EVALS.md#investigator-on-paypals-own-example-code-we-didnt-write).
 
 The button fix stops a person double-paying, but an AI agent calling `/api/orders` directly could still create two orders. A complete fix ties orders to a server-side cart with a `PayPal-Request-Id`, as the Ember and Wick fixed store does; the example has no cart to tie them to.
 

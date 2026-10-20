@@ -1,6 +1,6 @@
 import { exec } from "node:child_process";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import type { Edit } from "./investigator.js";
 
@@ -8,9 +8,14 @@ const run = promisify(exec);
 const ROOT_TSCONFIG = resolve("tsconfig.json").replaceAll("\\", "/");
 
 // The investigator never touches the original source: its edits go into a copy.
-export function copyStore(fromDir: string, toDir: string) {
+// By default the copy is every .ts file in the folder (the Ember and Wick
+// layout); pass files, relative to the folder, for other stores.
+export function copyStore(fromDir: string, toDir: string, files?: string[]) {
   mkdirSync(toDir, { recursive: true });
-  for (const f of readdirSync(fromDir).filter((f) => f.endsWith(".ts"))) copyFileSync(join(fromDir, f), join(toDir, f));
+  for (const f of files ?? readdirSync(fromDir).filter((f) => f.endsWith(".ts"))) {
+    mkdirSync(dirname(join(toDir, f)), { recursive: true });
+    copyFileSync(join(fromDir, f), join(toDir, f));
+  }
 }
 
 export function applyEdits(dir: string, edits: Edit[]) {
@@ -32,6 +37,20 @@ export async function typecheck(dir: string): Promise<{ ok: boolean; output: str
     const e = error as { stdout?: string; stderr?: string };
     return { ok: false, output: `${e.stdout ?? ""}${e.stderr ?? ""}`.trim() };
   }
+}
+
+// Plain-JavaScript stores have no compiler, so a patch must at least parse.
+export async function syntaxCheck(dir: string, files: string[]): Promise<{ ok: boolean; output: string }> {
+  const problems: string[] = [];
+  for (const f of files.filter((f) => f.endsWith(".js"))) {
+    try {
+      await run(`"${process.execPath}" --check "${join(dir, f)}"`, { timeout: 30_000 });
+    } catch (error) {
+      const e = error as { stdout?: string; stderr?: string };
+      problems.push(`${f}:\n${`${e.stdout ?? ""}${e.stderr ?? ""}`.trim()}`);
+    }
+  }
+  return { ok: problems.length === 0, output: problems.join("\n\n") };
 }
 
 // A compact before/after view of each edit for people reading the fix.
