@@ -24,6 +24,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run typecheck
+      - run: npm test
       - name: Crash-test the store you ship
         run: npm run crash -- refund-retry declined-card price-tamper double-pay fixed --strict
         env:

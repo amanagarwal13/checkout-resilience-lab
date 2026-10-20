@@ -177,3 +177,14 @@ Cost note: the Standard plan is about $25 a month. Deploying now and running to 
 - `LICENSE` (MIT) with third-party notices (PayPal AI Toolkit references under Apache-2.0; AG Studio under its own commercial licence).
 - `.github/workflows/crash-test.yml`: on every pull request, installs Chromium, type-checks and crash-tests the store you ship with `--strict`, uploading recordings and reports. Needs repository secrets.
 - `docs/images`: screenshots for the README (to be retaken from a fresh run on the hosted demo).
+
+## Phase 11. Tests for DummyRun itself
+**Date:** Oct 20 · **Status:** done
+
+The project moved to `D:\Aman Personal Projects\PayPal-Hackathon` (GitHub `amanagarwal13/PayPal-Hackathon`) with its full history.
+
+Built: 15 tests with Node's test runner (`npm test`, also in CI), no PayPal or OpenAI calls needed:
+- **Money checks** (8): clean purchase, refund paid twice, rating cap when money is at risk, goods sold below catalog price, order marked paid with no charge, a declined card handled well, scam refunds beyond policy, and an incomplete purchase being inconclusive.
+- **Proxy** (3), against a fake PayPal: forwarding and logging, `delay-response` (PayPal processes the refund while the store times out; the retry goes straight through), `mock-response` (PayPal's negative-testing header reaches PayPal).
+- **SDK redirect** (1): with `apiBase` set, the official PayPal Server SDK sends both the token request and the API call to DummyRun.
+- **Spending limits** (1) and **investigator edits** (2): edits must match exactly once, fixes go into a copy, and replacement text is applied literally.

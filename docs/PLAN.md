@@ -96,6 +96,30 @@ Goal: five scenarios that each fail on the original build and pass on the fixed 
 - Avoid raw data-dump grids; charts and widgets first.
 - Needs: AG Studio trial key requested around Nov 1 so it lasts through Dec 15.
 
+Phases 3 to 6 were completed on Oct 19; Phase 7's files are ready. See the log.
+
+### Added Oct 20: credibility and "wow" phases (before deployment)
+
+### Phase 11. Tests for DummyRun itself (Oct 20)
+- Unit tests with Node's test runner for the money checks, the proxy's fault injection, the spending limits, the SDK host redirect and how investigator edits are validated and applied.
+- `npm test`, also run in CI.
+- Done when: the tests pass locally and cover every money check and both fault types.
+
+### Phase 12. Investigator on all scenarios, with measurements (Oct 21 to 22)
+- Run the investigator on double-pay, declined-card and price-tamper as well.
+- `npm run eval`: repeated runs that measure (a) how often the investigator's patch turns a failing scenario green, and (b) how often the refund scam beats a prompt-only support bot versus the code guardrail.
+- Results recorded in `docs/EVALS.md` and the README.
+
+### Phase 13. Coding-agent integration over MCP (Oct 23 to 27)
+- `npx dummyrun mcp`: an MCP server that crash-tests the store in the developer's own folder, so a fix their coding agent applies is exactly what gets re-tested.
+- Tools: list scenarios, run a crash test (returns a link to watch live), get a test's evidence, get the investigator's fix as edits.
+- A hosted MCP endpoint on the deployed demo for judges, and setup lines for Claude Code, Cursor and Codex, plus a Claude Code command next to PayPal's AI Toolkit.
+- Done when: in a coding agent, "crash-test my checkout", "fix it", "run it again" goes from red to green on the real sandbox.
+
+### Phase 14. Crash-test a store we didn't write (Oct 28 to 30)
+- A one-line helper that points any PayPal Server SDK client at DummyRun.
+- Run DummyRun against PayPal's own example app (`paypaldev/example-node-express`) through a small adapter, and record the findings honestly.
+
 ### Phase 7. Deploy to Render (Oct 31 to Nov 3)
 - Dockerfile on the Playwright image, `render.yaml` Blueprint, paid web service (no sleeping), Render Postgres for run history.
 - Public HTTPS URL enables the webhook relay: late and duplicate `PAYMENT.CAPTURE.COMPLETED` scenario with signature verification.

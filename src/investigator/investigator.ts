@@ -106,7 +106,8 @@ Rules:
 - Each edit's "find" must be copied exactly from the file (no line-number prefixes) and appear exactly once in it.
 - Keep the store's behaviour for honest customers the same. Don't rename exports or change function signatures.`;
 
-function validate(edits: Edit[], source: Record<string, string>): string[] {
+// Every edit must name a real file and match exactly one place in it.
+export function validateEdits(edits: Edit[], source: Record<string, string>): string[] {
   const problems: string[] = [];
   for (const e of edits) {
     const file = source[e.file];
@@ -133,7 +134,7 @@ export async function investigate(scenario: Scenario, result: RunResult, storeDi
       text: { format: { type: "json_schema", name: "diagnosis", schema, strict: true } },
     });
     const parsed = JSON.parse(response.output_text) as Omit<Diagnosis, "model" | "rootCause"> & { rootCause: { file: string; snippet: string } };
-    const problems = validate(parsed.fix.edits, source);
+    const problems = validateEdits(parsed.fix.edits, source);
     if (problems.length === 0) {
       const file = source[parsed.rootCause.file] ?? "";
       const index = file.indexOf(parsed.rootCause.snippet);
