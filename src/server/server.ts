@@ -13,7 +13,8 @@ import { page } from "./ui.js";
 const lab = createLab();
 const app = new Hono();
 const port = Number(process.env.PORT ?? 3000);
-const publicUrl = (process.env.PUBLIC_URL ?? `http://localhost:${port}`).replace(/\/$/, "");
+// Render sets RENDER_EXTERNAL_URL; links the MCP tools return use it.
+const publicUrl = (process.env.PUBLIC_URL ?? process.env.RENDER_EXTERNAL_URL ?? `http://localhost:${port}`).replace(/\/$/, "");
 
 // Spending guards for the public demo, registered before the routes they protect.
 app.post("/api/runs", limit("crash tests", 3, envNumber("DAILY_CRASH_TESTS", 30)));
