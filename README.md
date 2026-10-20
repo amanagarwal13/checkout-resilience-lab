@@ -24,7 +24,10 @@ The demo store, Ember and Wick, is a small candle shop with PayPal card fields, 
 | Declined card | Proxy adds PayPal's `PayPal-Mock-Response: INSTRUMENT_DECLINED` to the capture | Order **marked paid with no charge**; shopper sees "Something went wrong" | Not marked paid; "Your card was declined. Please try a different card." |
 | Price tampering | Shopper rewrites cart prices to $0.01 in the browser | **$42 of candles sold for $0.03** | Prices only from the server catalogue |
 
-The AI investigator's own patches turned refund-retry and refund-scam from 2/5 to 5/5 with $0 at risk (see [docs/IMPLEMENTATION_LOG.md](docs/IMPLEMENTATION_LOG.md)).
+Measured over repeated runs ([docs/EVALS.md](docs/EVALS.md)):
+
+- **The investigator's own patch fixed the store in 13 of 15 attempts** across all five scenarios. Each patch is type-checked and re-run against PayPal before it counts; the two misses were caught that way (one still charged twice, one didn't compile).
+- **The refund scammer got money in 10 of 10 runs** against the support bot whose policy is only in its prompt ($246 lost), and in **0 of 10** once the policy was also checked in code.
 
 ## Run it
 
@@ -140,7 +143,7 @@ Everything in this repository was built from October 19, 2026, during the PayPal
 
 - **Sandbox only.** DummyRun is for testing; it never touches live PayPal money.
 - **The store needs one setting and the standard interface.** The runner loads a folder whose `app.ts` exports `createStoreApp`, and the shoppers' browser tools know the demo store's pages. Testing an arbitrary store needs a small adapter.
-- **AI behaviour varies.** The scam doesn't land on every run, because a prompt-only guardrail fails some of the time, not every time. The fixed store's protection is in code and doesn't depend on the model.
+- **AI behaviour varies.** Shoppers, the support bot and the investigator are models, so results differ run to run; the evals give the rates. The fixed store's refund protection is in code and doesn't depend on the model.
 - **AI-written fixes need review.** The investigator's scam fix is safe but stricter than needed (one refund per order for every channel). That's why fixes go to a copy and a re-run, not straight to production.
 - **The hosted demo runs one crash test at a time**, with hourly and daily limits on tests, fixes and AI requests to keep costs bounded.
 - Not yet covered: late or duplicated payment notifications (webhooks), Transaction Search, Venmo.

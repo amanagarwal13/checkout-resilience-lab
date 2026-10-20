@@ -201,3 +201,14 @@ Built:
 - MCP calls share the demo's spending limits (200 an hour per visitor, 2,000 a day).
 
 Verified: `scripts/mcp-loop.ts refund-retry` over MCP against the store in the working copy. Before: rating 2/5, $16.00 at risk (PayPal refunded twice). The diagnosis pointed at `stores/ember-and-wick/original/app.ts:101`; the edits were applied to the file; the re-run scored 5/5 with $0.00 at risk. The store was then restored with `git checkout` so the demo still shows the bug. 15 unit tests pass.
+
+## Phase 12. Investigator on all scenarios, with measurements
+**Date:** Oct 20 · **Status:** done
+
+Built: `npm run eval -- investigator [--n 3]` and `npm run eval -- scam [--n 10]` (`src/lab/eval.ts`), writing `eval.json` and `eval.md` to `runs/evals/<mode>-<time>/`. `EVAL_PARALLEL` runs several at once; each run gets its own proxy and store process.
+
+Results (written up in `docs/EVALS.md` and the README):
+- Investigator, 3 attempts on each of the five scenarios: 13 of 15 patches fixed the store (every money check passing, $0 at risk, re-run against PayPal's sandbox). The misses: a double-pay patch that made the request ID per click, so it still charged twice (the re-run caught it), and a declined-card patch that didn't type-check (never run).
+- Refund scam, 10 runs per store: the scammer got money in 10 of 10 runs against the prompt-only bot ($246 in total) and 0 of 10 against the bot whose policy is also checked in code.
+
+This replaces the earlier note that the scam was probabilistic: with the current six tactics it landed every time.
