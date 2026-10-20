@@ -13,7 +13,8 @@
     "eval": "tsx src/lab/eval.ts",
     "smoke": "tsx src/smoke.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "crash:paypal-example": "tsx src/lab/crashPayPalExample.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
@@ -35,7 +36,10 @@
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "body-parser": "^1.20.8",
+    "dotenv": "^16.6.1",
     "esbuild": "^0.28.2",
+    "express": "^4.22.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },

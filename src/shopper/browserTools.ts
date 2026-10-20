@@ -1,7 +1,7 @@
 import type { Frame, Page } from "playwright";
 
 // PayPal's published sandbox test Visa. No PayPal login, no one-time code.
-const TEST_CARD = { name: "Test Buyer", number: "4111111111111111", expiry: "12/30", cvv: "123" };
+export const TEST_CARD = { name: "Test Buyer", number: "4111111111111111", expiry: "12/30", cvv: "123" };
 
 export interface ShopItem { sku: string; name: string; price: string }
 
@@ -31,7 +31,7 @@ async function cardFrame(page: Page, kind: "name" | "number" | "expiry" | "cvv")
 
 // PayPal's card fields reformat input as you type (for example "12 / 30"),
 // so compare digits and retype if a keystroke got lost.
-async function fillCardField(page: Page, kind: "name" | "number" | "expiry" | "cvv", value: string) {
+export async function fillCardField(page: Page, kind: "name" | "number" | "expiry" | "cvv", value: string) {
   const want = kind === "name" ? value : value.replace(/\D/g, "");
   for (let attempt = 1; attempt <= 3; attempt++) {
     const input = (await cardFrame(page, kind)).locator("input").first();

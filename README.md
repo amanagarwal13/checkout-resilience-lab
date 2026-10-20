@@ -88,6 +88,38 @@ Then ask: *"Crash-test my PayPal checkout, fix what fails, and run it again."* I
 
 `npx tsx scripts/mcp-loop.ts refund-retry` plays the agent's part from a script. Restore the demo store afterwards with `git checkout -- stores/ember-and-wick/original`.
 
+## Crash-testing a store we didn't write
+
+To check that DummyRun finds real problems and not just the ones we planted, we crash-tested **PayPal's own advanced-integration example** (card fields with a Node server, from [paypal-examples/docs-examples](https://github.com/paypal-examples/docs-examples)). It runs as published, except for the one line DummyRun needs in the PayPal SDK client options (plus its import):
+
+```js
+import { dummyrun } from "./dummyrun-paypal.js";   // sdk/paypal.js in this repo
+const client = new Client({ ...yourOptions, ...dummyrun() });   // no effect unless DummyRun is testing
+```
+
+```bash
+npm run crash:paypal-example             # as published
+npm run crash:paypal-example -- --fixed  # with the fixes below
+```
+
+| Scenario | As published | With the fixes |
+| --- | --- | --- |
+| Control: one normal purchase | 5/5, one $100 charge | 5/5 |
+| Shopper double-clicks **Pay now with Card** | **Charged twice** ($100 extra): two PayPal orders, both captured | One charge |
+| PayPal is slow to confirm the capture; the shopper presses Pay again | **Charged twice** ($100 extra) | One charge |
+| Card declined at capture (`INSTRUMENT_DECLINED`) | No charge, but the page says `{"error":"Failed to capture order."}` | "The instrument presented was either declined…" |
+
+Each "as published" result repeated on every run we made (4 double-click runs, 3 slow-capture runs, 2 declined-card runs), checked in PayPal's sandbox records. What was wrong, and the fixes in `stores/paypal-advanced-example-fixed` (each marked `// DummyRun fix`):
+
+- **Pay can be pressed while a payment is in flight.** Each press creates and captures a new order. Fix: disable the button until the payment fails.
+- **The server discards PayPal's error.** The capture route turns PayPal's `INSTRUMENT_DECLINED` into a generic 500, so the client's documented decline handling never runs. Fix: return PayPal's status and error body.
+- **The client's decline handling then breaks for card payments.** With PayPal's error passed through, the page showed `TypeError: actions.restart is not a function`: the `!data.card` check didn't stop the Buttons-only `restart()` path. Fix: check that `actions.restart` exists.
+- The capture route logs failures as "Failed to create order".
+
+The button fix stops a person double-paying, but an AI agent calling `/api/orders` directly could still create two orders. A complete fix ties orders to a server-side cart with a `PayPal-Request-Id`, as the Ember and Wick fixed store does; the example has no cart to tie them to.
+
+These are findings on sample code, which is written to be short rather than production-ready. They matter because sample code gets copied into real stores. The shopper here is scripted, not an AI agent: the page has no products or order pages for the AI shopper's tools to use.
+
 ## How it works
 
 ```
@@ -142,7 +174,7 @@ Everything in this repository was built from October 19, 2026, during the PayPal
 ## Limitations
 
 - **Sandbox only.** DummyRun is for testing; it never touches live PayPal money.
-- **The store needs one setting and the standard interface.** The runner loads a folder whose `app.ts` exports `createStoreApp`, and the shoppers' browser tools know the demo store's pages. Testing an arbitrary store needs a small adapter.
+- **A new store needs a little setup.** The store needs the one SDK line. The AI shoppers' browser tools know the demo store's pages; PayPal's example was tested with a scripted shopper and a small host that serves its page. A store with different pages needs its own shopper steps.
 - **AI behaviour varies.** Shoppers, the support bot and the investigator are models, so results differ run to run; the evals give the rates. The fixed store's refund protection is in code and doesn't depend on the model.
 - **AI-written fixes need review.** The investigator's scam fix is safe but stricter than needed (one refund per order for every channel). That's why fixes go to a copy and a re-run, not straight to production.
 - **The hosted demo runs one crash test at a time**, with hourly and daily limits on tests, fixes and AI requests to keep costs bounded.

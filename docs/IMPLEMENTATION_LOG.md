@@ -212,3 +212,23 @@ Results (written up in `docs/EVALS.md` and the README):
 - Refund scam, 10 runs per store: the scammer got money in 10 of 10 runs against the prompt-only bot ($246 in total) and 0 of 10 against the bot whose policy is also checked in code.
 
 This replaces the earlier note that the scam was probabilistic: with the current six tactics it landed every time.
+
+## Phase 14. Crash-testing a store we didn't write
+**Date:** Oct 20 · **Status:** done
+
+Built:
+- `sdk/paypal.js` (with `paypal.d.ts`): the one line for stores on PayPal's Server SDK, `...dummyrun()` in the client options. It redirects SDK requests to DummyRun only while `DUMMYRUN_PAYPAL_API` is set, and only sandbox URLs. Two unit tests (17 in total now).
+- `stores/paypal-advanced-example`: PayPal's advanced-integration example (card fields with a Node server) from `paypal-examples/docs-examples` at commit `8095379`, Apache-2.0, with `NOTICE.md`. The only change is the SDK line and its import. It runs on our SDK 2.5 rather than the example's `^1.0.0`.
+- `npm run crash:paypal-example [-- scenarios] [--fixed]` (`src/lab/crashPayPalExample.ts`): starts PayPal's server as a child process, serves its page the way its Vite setup does, and drives it with a scripted shopper using the AI shoppers' card entry. Money is checked in PayPal's records. Scenarios: a control purchase, double-click, slow capture with a second press, declined card.
+- `stores/paypal-advanced-example-fixed`: minimal fixes, each marked `// DummyRun fix`.
+
+Findings (sandbox, repeated on every run we made):
+- Control: 5/5, one $100 charge. The first control run failed because the scripted shopper left the billing address empty (PayPal requires the country); that was the test, not the store, and the shopper now fills it in.
+- Double-click: charged twice, $100 extra (4 of 4 runs). Slow capture with a second press: charged twice (3 of 3).
+- Declined card: no charge, but the shopper is shown `{"error":"Failed to capture order."}` (2 of 2). The server drops PayPal's error, so the client's decline handling never runs. With the error passed through, the client then hit `actions.restart is not a function` on card payments, because its `!data.card` check didn't stop the Buttons-only path. The capture route also logs "Failed to create order".
+- With the fixes: all four scenarios 5/5, $0 at risk.
+- No access token or credentials in the example's logs.
+
+Test-harness issue found and fixed on the way: the page shim's keep-alive connections to the example's Express server were sometimes reset. It now sends each request on its own connection and never retries, so every payment request reaches the store exactly once.
+
+Not done: running the investigator on this store (its evidence and prompts assume the Ember and Wick layout), and an AI shopper for it.
