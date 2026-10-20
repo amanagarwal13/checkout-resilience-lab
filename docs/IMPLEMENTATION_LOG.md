@@ -253,3 +253,12 @@ Results (written up in `docs/EVALS.md`), three attempts per failing scenario aft
 - No `// DummyRun fix` text or credentials in any investigator input (checked with grep over every `investigation.json`).
 
 Not done: a second investigator pass on the re-run's evidence (which would show it the `actions.restart` error), and a note in the idempotency reference that simultaneous requests can race past `PayPal-Request-Id`. Either would likely raise the numbers, so they were left out of this measurement.
+
+## Phase 7. Deployed to Render
+**Date:** Oct 20 · **Status:** live, to be suspended until about Nov 5–8
+
+- Created from `render.yaml` as a Blueprint: web service `dummyrun` (Docker, Standard plan with 2 GB of memory, Oregon), a 2 GB disk at `/app/runs`, health check `/healthz`, auto-deploy from `main`. Secrets were entered by Aman in the Render dashboard.
+- First build (Playwright base image plus `npm ci`) took under a minute; the site answered its health check about a minute later at https://dummyrun.onrender.com.
+- Checked live: the lab page, scenario list, run history, dashboard, and the MCP endpoint at `/mcp` listing all six tools. Links the MCP tools return use Render's public URL (`RENDER_EXTERNAL_URL`).
+- One crash test on the server (refund-retry, the store as written): 2/5, $16.00 at risk, PayPal refunded $32 for a $16 request, the same as locally. It took 35 seconds, with the recording and the last frame served. Memory stayed around 540 MB of 2 GB.
+- Not yet checked on the server: a full five-scenario run (two shoppers at once, `MAX_PARALLEL=2`), "Investigate and fix", and the dashboard's AI assistant.
