@@ -3,15 +3,15 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { CheckoutPaymentIntent, Client, Environment, OrdersController } from "@paypal/paypal-server-sdk";
-import { dummyrun } from "../sdk/paypal.js";
+import { resilienceLab } from "../sdk/paypal.js";
 
-// The one line a store adds: `...dummyrun()` in its PayPal SDK client options.
-test("dummyrun() changes nothing unless DummyRun is crash-testing", () => {
-  assert.deepEqual(dummyrun(""), {});
-  assert.deepEqual(dummyrun(undefined), {});
+// The one line a store adds: `...resilienceLab()` in its PayPal SDK client options.
+test("resilienceLab() changes nothing unless Resilience Lab is stress-testing", () => {
+  assert.deepEqual(resilienceLab(""), {});
+  assert.deepEqual(resilienceLab(undefined), {});
 });
 
-test("dummyrun(apiBase) sends the SDK's requests to DummyRun", async () => {
+test("resilienceLab(apiBase) sends the SDK's requests to Resilience Lab", async () => {
   const paths: string[] = [];
   const server = createServer((req, res) => {
     paths.push(`${req.method} ${req.url}`);
@@ -23,7 +23,7 @@ test("dummyrun(apiBase) sends the SDK's requests to DummyRun", async () => {
     const client = new Client({
       clientCredentialsAuthCredentials: { oAuthClientId: "id", oAuthClientSecret: "secret" },
       environment: Environment.Sandbox,
-      ...dummyrun(`http://localhost:${(server.address() as AddressInfo).port}`),
+      ...resilienceLab(`http://localhost:${(server.address() as AddressInfo).port}`),
     });
     const { result } = await new OrdersController(client).createOrder({
       body: { intent: CheckoutPaymentIntent.Capture, purchaseUnits: [{ amount: { currencyCode: "USD", value: "1.00" } }] },

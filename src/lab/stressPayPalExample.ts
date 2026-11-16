@@ -16,16 +16,16 @@ import { createPayPalProxy, type FaultRule, type PayPalProxy } from "./proxy.js"
 import { HELD_FOR_MS } from "./scenarios.js";
 import { fromCents, toCents } from "./storeProfile.js";
 
-// Crash-tests a store DummyRun didn't write: PayPal's own advanced-integration
+// Stress-tests a store Resilience Lab didn't write: PayPal's own advanced-integration
 // example (paypal-examples/docs-examples, advanced-integration/v2, Apache-2.0),
-// run as published apart from the two DummyRun lines in server.js.
+// run as published apart from the two Resilience Lab lines in server.js.
 // Its page has no product list or order pages, so the shopper here is scripted
 // (same card entry as the AI shoppers) rather than an AI agent.
-// Usage: npm run crash:paypal-example [-- baseline|double-pay|slow-capture|declined-card] [--fixed | --investigate | --store=<dir>]
+// Usage: npm run stress:paypal-example [-- baseline|double-pay|slow-capture|declined-card] [--fixed | --investigate | --store=<dir>]
 // --investigate: for each failing scenario, the AI investigator reads the
 // evidence and the example's source, its edits go into a copy under runs/,
 // and the same scenario is re-run against the copy.
-// --store=<dir>: crash-test another copy of the example, such as a patched one.
+// --store=<dir>: stress-test another copy of the example, such as a patched one.
 
 const FIXED = process.argv.includes("--fixed");
 const INVESTIGATE = process.argv.includes("--investigate");
@@ -40,14 +40,14 @@ const SOURCE_FILES = ["server.js", "client/app.js", "client/index.html"];
 const STORE_NOTES = `This is PayPal's own advanced-integration example checkout, in plain JavaScript (no TypeScript, no build step).
 server.js is the Express server; it talks to PayPal through the PayPal Server SDK (@paypal/paypal-server-sdk).
 client/app.js runs in the shopper's browser: it renders PayPal's card fields and buttons (PayPal JS SDK) and calls the server's /api routes. client/index.html is the page.
-The two lines marked "// DummyRun: added" in server.js connect the store to DummyRun's test harness; leave them as they are.`;
+The two lines marked "// Resilience Lab: added" in server.js connect the store to Resilience Lab's test harness; leave them as they are.`;
 const SDK_IMPORT = "../../sdk/paypal.js";
 const forwardErrors: string[] = [];
 
 interface ExampleScenario {
   id: string;
   title: string;
-  summary: string; // what the scripted shopper and DummyRun did, for the investigator
+  summary: string; // what the scripted shopper and Resilience Lab did, for the investigator
   faults: FaultRule[];
   expectedCharges: number;
   shopper: (page: Page) => Promise<void>;
@@ -86,7 +86,7 @@ const scenarios: ExampleScenario[] = [
   {
     id: "slow-capture",
     title: "PayPal is slow to answer the capture, so the shopper presses Pay again",
-    summary: "The shopper filled in the card fields and billing address and clicked Pay. DummyRun let PayPal process the first capture but held its answer back for 8 seconds. After 4 seconds with nothing on the page, the shopper clicked Pay again, meaning to buy once.",
+    summary: "The shopper filled in the card fields and billing address and clicked Pay. Resilience Lab let PayPal process the first capture but held its answer back for 8 seconds. After 4 seconds with nothing on the page, the shopper clicked Pay again, meaning to buy once.",
     faults: [{ name: "slow capture", method: "POST", path: /\/v2\/checkout\/orders\/[^/]+\/capture$/, action: "delay-response", delayMs: HELD_FOR_MS, times: 1 }],
     expectedCharges: 1,
     shopper: async (page) => {
@@ -98,7 +98,7 @@ const scenarios: ExampleScenario[] = [
   {
     id: "declined-card",
     title: "Card declined at capture",
-    summary: "The shopper filled in the card fields and billing address and clicked Pay once. DummyRun asked PayPal's sandbox to decline the card at capture (PayPal-Mock-Response INSTRUMENT_DECLINED), so no money should move and the shopper should be told the card was declined.",
+    summary: "The shopper filled in the card fields and billing address and clicked Pay once. Resilience Lab asked PayPal's sandbox to decline the card at capture (PayPal-Mock-Response INSTRUMENT_DECLINED), so no money should move and the shopper should be told the card was declined.",
     faults: [{ name: "card declined", method: "POST", path: /\/v2\/checkout\/orders\/[^/]+\/capture$/, action: "mock-response", mockCode: "INSTRUMENT_DECLINED", times: 1 }],
     expectedCharges: 0,
     shopper: async (page) => {
@@ -136,7 +136,7 @@ async function startExample(storeDir: string, apiBase: string, logFile: string) 
   const log = createWriteStream(logFile);
   const server = spawn(process.execPath, ["server.js"], {
     cwd: storeDir,
-    env: { ...process.env, PORT: String(apiPort), PAYPAL_CLIENT_ID: config.paypalClientId, PAYPAL_CLIENT_SECRET: config.paypalClientSecret, DUMMYRUN_PAYPAL_API: apiBase },
+    env: { ...process.env, PORT: String(apiPort), PAYPAL_CLIENT_ID: config.paypalClientId, PAYPAL_CLIENT_SECRET: config.paypalClientSecret, RESILIENCE_LAB_PAYPAL_API: apiBase },
     stdio: ["ignore", "pipe", "pipe"],
   });
   server.stdout.pipe(log);
@@ -160,7 +160,7 @@ async function startExample(storeDir: string, apiBase: string, logFile: string) 
       return c.body(body, status as 200, { "Content-Type": type });
     } catch (error) {
       forwardErrors.push(`${c.req.method} ${path}: ${(error as Error).cause ?? error}`);
-      return c.json({ error: "DummyRun couldn't reach the store" }, 502);
+      return c.json({ error: "Resilience Lab couldn't reach the store" }, 502);
     }
   });
   const front = await new Promise<ReturnType<typeof serve>>((ok) => {
@@ -230,7 +230,7 @@ function show(v: ExampleResult) {
   for (const c of v.checks) console.log(`  ${c.passed ? "pass" : "FAIL"} ${c.name}: ${c.detail}`);
   for (const call of v.paypalCalls) console.log(`    ${call.call} -> ${call.status}${call.requestId ? ` [PayPal-Request-Id ${call.requestId}]` : ""}${call.fault ? ` (${call.fault})` : ""}`);
   console.log(`  page said: "${v.told.slice(0, 600)}"`);
-  if (forwardErrors.length) console.log(`  (DummyRun's page server couldn't reach the store: ${forwardErrors.splice(0).join("; ")})`);
+  if (forwardErrors.length) console.log(`  (Resilience Lab's page server couldn't reach the store: ${forwardErrors.splice(0).join("; ")})`);
 }
 
 // What the store printed besides the SDK's request log: its own console.error
@@ -248,7 +248,7 @@ function storeErrors(logFile: string, storeDir: string) {
 function evidenceFor(scenario: ExampleScenario, v: ExampleResult, logFile: string) {
   return JSON.stringify(
     {
-      scenario: { id: scenario.id, title: scenario.title, whatDummyRunDid: scenario.summary },
+      scenario: { id: scenario.id, title: scenario.title, whatTheLabDid: scenario.summary },
       failedChecks: v.checks.filter((c) => !c.passed),
       moneyAtRisk: `$${fromCents(v.atRiskCents)}`,
       paypalCalls: v.proxyLog.filter((e) => !e.path.includes("oauth2")).map((e) => ({
@@ -280,14 +280,14 @@ async function investigateAndRerun(scenario: ExampleScenario, before: ExampleRes
   const patchedDir = resolve(dir, "patched-store");
   copyStore(STORE_DIR, patchedDir, SOURCE_FILES);
   applyEdits(patchedDir, diagnosis.fix.edits);
-  // The copy lives deeper in the repo, so point DummyRun's SDK import at the same file.
+  // The copy lives deeper in the repo, so point Resilience Lab's SDK import at the same file.
   const serverPath = join(patchedDir, "server.js");
   const sdkPath = relative(patchedDir, resolve("sdk/paypal.js")).replaceAll("\\", "/");
   writeFileSync(serverPath, readFileSync(serverPath, "utf8").replace(`"${SDK_IMPORT}"`, () => `"${sdkPath}"`));
   const checked = await syntaxCheck(patchedDir, SOURCE_FILES);
   const record: Record<string, unknown> = { scenario: scenario.id, evidence: JSON.parse(evidence), diagnosis, syntaxCheck: checked };
   if (!checked.ok) {
-    console.log(`  The patch doesn't parse, so DummyRun won't run it:\n${checked.output}`);
+    console.log(`  The patch doesn't parse, so Resilience Lab won't run it:\n${checked.output}`);
   } else {
     console.log("  Patch parses (node --check). Re-running the same scenario against the patched copy…");
     const after = await run(scenario, proxy, join(dir, "patched"), patchedDir);
@@ -305,7 +305,7 @@ const picked = wanted.length ? scenarios.filter((s) => wanted.includes(s.id)) : 
 const runDir = join("runs", FIXED ? "paypal-example-fixed" : INVESTIGATE ? "paypal-example-investigate" : OTHER_STORE ? "paypal-example-other" : "paypal-example", new Date().toISOString().replace(/[:.]/g, "-"));
 const proxy = createPayPalProxy({ port: 0 });
 await proxy.listen();
-console.log(`Crash-testing PayPal's advanced-integration example${FIXED ? " with the DummyRun fixes" : OTHER_STORE ? ` from ${STORE_DIR}` : " as published"}${INVESTIGATE ? ", investigating failures" : ""}. Recordings in ${runDir}\n`);
+console.log(`Stress-testing PayPal's advanced-integration example${FIXED ? " with the Resilience Lab fixes" : OTHER_STORE ? ` from ${STORE_DIR}` : " as published"}${INVESTIGATE ? ", investigating failures" : ""}. Recordings in ${runDir}\n`);
 try {
   for (const scenario of picked) {
     const dir = join(runDir, scenario.id);

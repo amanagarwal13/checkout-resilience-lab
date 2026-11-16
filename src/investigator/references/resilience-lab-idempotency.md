@@ -1,4 +1,4 @@
-# Retries and duplicate requests (DummyRun notes)
+# Retries and duplicate requests (Resilience Lab notes)
 
 Source: PayPal REST API idempotency reference,
 https://developer.paypal.com/api/rest/reference/idempotency/

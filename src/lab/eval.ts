@@ -7,7 +7,7 @@ import { runScenario, type RunResult, type StoreUnderTest } from "./runScenario.
 import { findScenario, scenarios, type Scenario } from "./scenarios.js";
 import { fromCents, storeBuilds } from "./storeProfile.js";
 
-// Measures DummyRun's AI instead of trusting one good run.
+// Measures Resilience Lab's AI instead of trusting one good run.
 //   npm run eval -- investigator [--n 3]   how often the investigator's own patch fixes each scenario
 //   npm run eval -- scam [--n 10]          how often the refund scam beats a prompt-only bot vs the code guardrail
 
@@ -77,7 +77,7 @@ async function evalInvestigator() {
   const lines = [
     `## Investigator: does its own patch fix the store?`,
     ``,
-    `Each scenario was crash-tested once on the store as written, then the investigator was run ${n} times on that evidence. Each patch was applied to a fresh copy, type-checked, and the same scenario re-run against PayPal's sandbox. "Fixed" means every money check passed with $0 at risk.`,
+    `Each scenario was stress-tested once on the store as written, then the investigator was run ${n} times on that evidence. Each patch was applied to a fresh copy, type-checked, and the same scenario re-run against PayPal's sandbox. "Fixed" means every money check passed with $0 at risk.`,
     ``,
     `| Scenario | Money at risk before | Fixed | Compiled | Root cause it named |`,
     `|---|---|---|---|---|`,

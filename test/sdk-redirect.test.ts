@@ -6,8 +6,8 @@ import { CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
 import { createPayPal } from "../stores/ember-and-wick/original/paypal.js";
 
 // The one setting a store needs: with apiBase set, the official PayPal Server SDK
-// sends every request (token and API calls) to DummyRun instead of PayPal.
-test("apiBase sends the official SDK's requests to DummyRun", async () => {
+// sends every request (token and API calls) to Resilience Lab instead of PayPal.
+test("apiBase sends the official SDK's requests to Resilience Lab", async () => {
   const paths: string[] = [];
   const server = createServer((req, res) => {
     paths.push(`${req.method} ${req.url}`);

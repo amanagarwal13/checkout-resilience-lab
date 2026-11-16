@@ -9,7 +9,7 @@ import {
   OrdersController,
 } from "@paypal/paypal-server-sdk";
 import bodyParser from "body-parser";
-import { dummyrun } from "../../sdk/paypal.js"; // DummyRun: added
+import { resilienceLab } from "../../sdk/paypal.js"; // Resilience Lab: added
 
 const app = express();
 app.use(bodyParser.json());
@@ -21,7 +21,7 @@ const client = new Client({
     oAuthClientId: PAYPAL_CLIENT_ID,
     oAuthClientSecret: PAYPAL_CLIENT_SECRET,
   },
-  ...dummyrun(), // DummyRun: added. No effect unless DummyRun is crash-testing.
+  ...resilienceLab(), // Resilience Lab: added. No effect unless Resilience Lab is stress-testing.
   timeout: 0,
   environment: Environment.Sandbox,
   logging: {

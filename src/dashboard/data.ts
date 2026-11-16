@@ -4,7 +4,7 @@ import type { RunResult } from "../lab/runScenario.js";
 // Run history flattened into tables for the AG Studio dashboard.
 // Amounts are in dollars so Studio's currency format reads naturally.
 
-const STORE_NAMES = { original: "As written", fixed: "Hand-fixed reference", patched: "Patched by DummyRun" } as const;
+const STORE_NAMES = { original: "As written", fixed: "Hand-fixed reference", patched: "Patched by Resilience Lab" } as const;
 const TITLES: Record<string, string> = {
   "refund-retry": "Refund retry",
   "refund-scam": "Refund scam",

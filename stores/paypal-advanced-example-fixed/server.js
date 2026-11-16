@@ -9,7 +9,7 @@ import {
   OrdersController,
 } from "@paypal/paypal-server-sdk";
 import bodyParser from "body-parser";
-import { dummyrun } from "../../sdk/paypal.js"; // DummyRun: added
+import { resilienceLab } from "../../sdk/paypal.js"; // Resilience Lab: added
 
 const app = express();
 app.use(bodyParser.json());
@@ -21,7 +21,7 @@ const client = new Client({
     oAuthClientId: PAYPAL_CLIENT_ID,
     oAuthClientSecret: PAYPAL_CLIENT_SECRET,
   },
-  ...dummyrun(), // DummyRun: added. No effect unless DummyRun is crash-testing.
+  ...resilienceLab(), // Resilience Lab: added. No effect unless Resilience Lab is stress-testing.
   timeout: 0,
   environment: Environment.Sandbox,
   logging: {
@@ -97,7 +97,7 @@ const captureOrder = async (orderID) => {
     };
   } catch (error) {
     if (error instanceof ApiError) {
-      // DummyRun fix: pass PayPal's error (for example INSTRUMENT_DECLINED) back to the page,
+      // Resilience Lab fix: pass PayPal's error (for example INSTRUMENT_DECLINED) back to the page,
       // so the client's existing error handling can tell the shopper what happened.
       return {
         jsonResponse: typeof error.body === "string" ? JSON.parse(error.body) : error.result,
@@ -126,7 +126,7 @@ app.post("/api/orders/:orderID/capture", async (req, res) => {
     const { jsonResponse, httpStatusCode } = await captureOrder(orderID);
     res.status(httpStatusCode).json(jsonResponse);
   } catch (error) {
-    console.error("Failed to capture order:", error); // DummyRun fix: was "Failed to create order"
+    console.error("Failed to capture order:", error); // Resilience Lab fix: was "Failed to create order"
     res.status(500).json({ error: "Failed to capture order." });
   }
 });

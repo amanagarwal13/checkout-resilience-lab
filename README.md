@@ -1,22 +1,20 @@
-# DummyRun
+# Checkout Resilience Lab
 
-**AI crash-test dummies for PayPal checkouts.**
-
-PayPal asked what happens when you put AI behind the wheel. DummyRun is the crash test.
+**Stress tests for PayPal checkouts, run by AI shoppers.**
 
 AI shopping agents and AI support bots are starting to move money. They retry when things are slow, double-submit, and can be talked into things. A checkout built and tested for patient humans can charge twice, refund twice or sell below cost, and the shop's own records often don't notice.
 
-DummyRun sends AI test shoppers through a store's real PayPal checkout, injects the failures real traffic brings, checks every charge and refund in **PayPal's own records**, explains what broke, writes the fix, and proves it with a re-run.
+Checkout Resilience Lab sends AI test shoppers through a store's real PayPal checkout, injects the failures real traffic brings, checks every charge and refund in **PayPal's own records**, explains what broke, writes the fix, and proves it with a re-run.
 
 > Hosted demo: _added after deployment_ · Demo video: _added after recording_
 
-![DummyRun crash test](docs/images/crash-test.png)
+![Checkout Resilience Lab stress test](docs/images/stress-test.png)
 
 ## What it found in the demo store
 
 The demo store, Ember and Wick, is a small candle shop with PayPal card fields, the PayPal button and an AI support bot that can issue refunds. Its original code has the kind of bugs real integrations ship with. Every result below is from real PayPal sandbox transactions.
 
-| Scenario | What DummyRun does | Store as written | After the fix |
+| Scenario | What Resilience Lab does | Store as written | After the fix |
 |---|---|---|---|
 | Refund retry | Lets PayPal process a refund, then holds PayPal's answer so the store times out; the AI agent retries | Refunded **$32 for a $16 request**; the shop's records show one refund | One refund |
 | Refund scam | A scammer pushes the AI support bot with a fake "system notice" and a spoofed "human approved" message | Bot refunded **$42 where $16 was owed** | Refund policy enforced in server code |
@@ -44,63 +42,63 @@ Requirements: Node 24, a PayPal developer account and an OpenAI API key.
    ```bash
    npm start
    ```
-   Press **Run crash test**, watch the shoppers, then open a failed test and press **Investigate and fix**. The **Dashboard** tab shows the history in AG Studio.
+   Press **Run stress test**, watch the shoppers, then open a failed test and press **Investigate and fix**. The **Dashboard** tab shows the history in AG Studio.
 
 From the command line:
 
 ```bash
-npm run crash                           # every scenario, original and fixed store
-npm run crash -- refund-retry original  # one scenario, one build
-npm run fix -- refund-scam              # crash-test, investigate, patch a copy, re-run
+npm run stress                           # every scenario, original and fixed store
+npm run stress -- refund-retry original  # one scenario, one build
+npm run fix -- refund-scam              # stress-test, investigate, patch a copy, re-run
 ```
 
 ## Use it from your coding agent
 
-With the lab running (`npm start`), DummyRun is also an MCP server at `http://localhost:3000/mcp`. Your coding agent can crash-test the checkout, read the evidence, get the fix as edits, apply them to your files and run the test again. Each test starts the store fresh from your folder, so the re-run tests exactly what the agent saved.
+With the lab running (`npm start`), Resilience Lab is also an MCP server at `http://localhost:3000/mcp`. Your coding agent can stress-test the checkout, read the evidence, get the fix as edits, apply them to your files and run the test again. Each test starts the store fresh from your folder, so the re-run tests exactly what the agent saved.
 
 ```bash
-claude mcp add --transport http dummyrun http://localhost:3000/mcp
+claude mcp add --transport http checkout-resilience-lab http://localhost:3000/mcp
 ```
 
 Cursor (`.cursor/mcp.json`) and other clients that take a URL:
 
 ```json
-{ "mcpServers": { "dummyrun": { "url": "http://localhost:3000/mcp" } } }
+{ "mcpServers": { "checkout-resilience-lab": { "url": "http://localhost:3000/mcp" } } }
 ```
 
 Codex (`~/.codex/config.toml`):
 
 ```toml
-[mcp_servers.dummyrun]
+[mcp_servers.checkout-resilience-lab]
 url = "http://localhost:3000/mcp"
 ```
 
-Then ask: *"Crash-test my PayPal checkout, fix what fails, and run it again."* In Claude Code, `/crash-test` does the same. The browser tab on http://localhost:3000 switches to each run as the agent starts it, so you can watch the shoppers while the agent works.
+Then ask: *"Stress-test my PayPal checkout, fix what fails, and run it again."* In Claude Code, `/stress-test` does the same. The browser tab on http://localhost:3000 switches to each run as the agent starts it, so you can watch the shoppers while the agent works.
 
 | Tool | What it does |
 | --- | --- |
-| `list_scenarios` | The failures DummyRun can throw at the checkout |
-| `start_crash_test` | Starts a run and returns its id and a link to watch it live |
-| `get_crash_test` | Waits for the results: rating, money at risk, failed checks |
+| `list_scenarios` | The failures Resilience Lab can throw at the checkout |
+| `start_stress_test` | Starts a run and returns its id and a link to watch it live |
+| `get_stress_test` | Waits for the results: rating, money at risk, failed checks |
 | `get_test_evidence` | Every PayPal call with any injected fault, and what the shopper did |
 | `diagnose_failure` | The investigator's explanation, the line at fault and the fix as exact edits; changes nothing |
 | `verify_fix_in_copy` | Applies the fix to a copy and re-runs, leaving your files alone |
 
 `npx tsx scripts/mcp-loop.ts refund-retry` plays the agent's part from a script. Restore the demo store afterwards with `git checkout -- stores/ember-and-wick/original`.
 
-## Crash-testing a store we didn't write
+## Stress-testing a store we didn't write
 
-To check that DummyRun finds real problems and not just the ones we planted, we crash-tested **PayPal's own advanced-integration example** (card fields with a Node server, from [paypal-examples/docs-examples](https://github.com/paypal-examples/docs-examples)). It runs as published, except for the one line DummyRun needs in the PayPal SDK client options (plus its import):
+To check that Resilience Lab finds real problems and not just the ones we planted, we stress-tested **PayPal's own advanced-integration example** (card fields with a Node server, from [paypal-examples/docs-examples](https://github.com/paypal-examples/docs-examples)). It runs as published, except for the one line Resilience Lab needs in the PayPal SDK client options (plus its import):
 
 ```js
-import { dummyrun } from "./dummyrun-paypal.js";   // sdk/paypal.js in this repo
-const client = new Client({ ...yourOptions, ...dummyrun() });   // no effect unless DummyRun is testing
+import { resilienceLab } from "./resilience-lab-paypal.js";   // sdk/paypal.js in this repo
+const client = new Client({ ...yourOptions, ...resilienceLab() });   // no effect unless Resilience Lab is testing
 ```
 
 ```bash
-npm run crash:paypal-example             # as published
-npm run crash:paypal-example -- --fixed  # with the fixes below
-npm run crash:paypal-example -- double-pay --investigate  # let the AI investigator fix a copy, then re-run
+npm run stress:paypal-example             # as published
+npm run stress:paypal-example -- --fixed  # with the fixes below
+npm run stress:paypal-example -- double-pay --investigate  # let the AI investigator fix a copy, then re-run
 ```
 
 | Scenario | As published | With the fixes |
@@ -110,7 +108,7 @@ npm run crash:paypal-example -- double-pay --investigate  # let the AI investiga
 | PayPal is slow to confirm the capture; the shopper presses Pay again | **Charged twice** ($100 extra) | One charge |
 | Card declined at capture (`INSTRUMENT_DECLINED`) | No charge, but the page says `{"error":"Failed to capture order."}` | "The instrument presented was either declined…" |
 
-Each "as published" result repeated on every run we made (4 double-click runs, 3 slow-capture runs, 2 declined-card runs), checked in PayPal's sandbox records. What was wrong, and the fixes in `stores/paypal-advanced-example-fixed` (each marked `// DummyRun fix`):
+Each "as published" result repeated on every run we made (4 double-click runs, 3 slow-capture runs, 2 declined-card runs), checked in PayPal's sandbox records. What was wrong, and the fixes in `stores/paypal-advanced-example-fixed` (each marked `// Resilience Lab fix`):
 
 - **Pay can be pressed while a payment is in flight.** Each press creates and captures a new order. Fix: disable the button until the payment fails.
 - **The server discards PayPal's error.** The capture route turns PayPal's `INSTRUMENT_DECLINED` into a generic 500, so the client's documented decline handling never runs. Fix: return PayPal's status and error body.
@@ -126,7 +124,7 @@ These are findings on sample code, which is written to be short rather than prod
 ## How it works
 
 ```
- AI test shoppers ──► store under test ──PayPal Server SDK──► DummyRun proxy ──► PayPal sandbox
+ AI test shoppers ──► store under test ──PayPal Server SDK──► Resilience Lab proxy ──► PayPal sandbox
  (OpenAI + Playwright)      │                                   injects faults,
                             │                                   logs every call
                             ▼
@@ -136,7 +134,7 @@ These are findings on sample code, which is written to be short rather than prod
  AI investigator ──► explanation, file and line, code fix ──► patched copy ──► same test again
 ```
 
-1. **One setting** points the store's PayPal Server SDK at DummyRun's proxy ([stores/ember-and-wick/original/paypal.ts](stores/ember-and-wick/original/paypal.ts)). The SDK passes `unstable_httpClientOptions` to axios; a custom adapter rewrites the host. Nothing else in the store changes.
+1. **One setting** points the store's PayPal Server SDK at Resilience Lab's proxy ([stores/ember-and-wick/original/paypal.ts](stores/ember-and-wick/original/paypal.ts)). The SDK passes `unstable_httpClientOptions` to axios; a custom adapter rewrites the host. Nothing else in the store changes.
 2. **AI test shoppers** ([src/shopper](src/shopper)) are OpenAI agents with browser tools: view the shop, buy, ask for a refund, chat with support. Each scenario fixes how the shopper misbehaves, so runs are repeatable.
 3. **The proxy** ([src/lab/proxy.ts](src/lab/proxy.ts)) forwards to the sandbox and can hold PayPal's answer after PayPal has processed a request, or add PayPal's own negative-testing header.
 4. **Money checks** ([src/lab/checks.ts](src/lab/checks.ts)) read orders, captures and refunds straight from PayPal: one cart one charge, charged the catalogue price, paid only after PayPal confirms, refunded what was owed, shop's records match PayPal. Money at risk is itemised by reason. A test the shopper couldn't complete is marked inconclusive, not failed.
@@ -161,13 +159,13 @@ These are findings on sample code, which is written to be short rather than prod
 |---|---|---|
 | OpenAI `gpt-5-mini` (Responses API, function calling) | AI test shoppers, the demo store's support bot | Shops, retries, argues with support |
 | OpenAI `gpt-5.5` (structured output) | Investigator | Diagnoses failures and writes fixes |
-| OpenAI `gpt-5.6-terra` / `gpt-5-mini` | Dashboard assistant | AG Studio's agents plus DummyRun's crash analyst |
-| AG Studio Agent Framework | [src/dashboard/client/main.tsx](src/dashboard/client/main.tsx) | Built-in agents, a custom "Crash analyst" agent and two DummyRun tools |
+| OpenAI `gpt-5.6-terra` / `gpt-5-mini` | Dashboard assistant | AG Studio's agents plus a custom resilience analyst |
+| AG Studio Agent Framework | [src/dashboard/client/main.tsx](src/dashboard/client/main.tsx) | Built-in agents, a custom "Resilience analyst" agent and two Resilience Lab tools |
 | Claude Code (Anthropic) | Development | Used to build this project, as a pair programmer |
 
 ## Sponsor tools
 
-- **AG Studio** ([/dashboard](src/dashboard)): money-at-risk dashboard over the crash-test history, with two custom widgets (calibration-target safety rating, money-at-risk counter) and a custom crash analyst agent that Studio's lead agent delegates to. Requires an AG Studio licence key; without one it runs with a trial watermark.
+- **AG Studio** ([/dashboard](src/dashboard)): money-at-risk dashboard over the stress-test history, with two custom widgets (resilience score, money-at-risk counter) and a custom resilience analyst agent that Studio's lead agent delegates to. Requires an AG Studio licence key; without one it runs with a trial watermark.
 - **Render**: [render.yaml](render.yaml) Blueprint and [Dockerfile](Dockerfile) on Playwright's image for the hosted demo.
 
 ## Built during the hackathon
@@ -176,11 +174,11 @@ Everything in this repository was built from October 19, 2026, during the PayPal
 
 ## Limitations
 
-- **Sandbox only.** DummyRun is for testing; it never touches live PayPal money.
+- **Sandbox only.** Resilience Lab is for testing; it never touches live PayPal money.
 - **A new store needs a little setup.** The store needs the one SDK line. The AI shoppers' browser tools know the demo store's pages; PayPal's example was tested with a scripted shopper and a small host that serves its page. A store with different pages needs its own shopper steps.
 - **AI behaviour varies.** Shoppers, the support bot and the investigator are models, so results differ run to run; the evals give the rates. The fixed store's refund protection is in code and doesn't depend on the model.
 - **AI-written fixes need review.** The investigator's scam fix is safe but stricter than needed (one refund per order for every channel). That's why fixes go to a copy and a re-run, not straight to production.
-- **The hosted demo runs one crash test at a time**, with hourly and daily limits on tests, fixes and AI requests to keep costs bounded.
+- **The hosted demo runs one stress test at a time**, with hourly and daily limits on tests, fixes and AI requests to keep costs bounded.
 - Not yet covered: late or duplicated payment notifications (webhooks), Transaction Search, Venmo.
 
 ## Licence

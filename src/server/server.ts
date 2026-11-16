@@ -17,7 +17,7 @@ const port = Number(process.env.PORT ?? 3000);
 const publicUrl = (process.env.PUBLIC_URL ?? process.env.RENDER_EXTERNAL_URL ?? `http://localhost:${port}`).replace(/\/$/, "");
 
 // Spending guards for the public demo, registered before the routes they protect.
-app.post("/api/runs", limit("crash tests", 3, envNumber("DAILY_CRASH_TESTS", 30)));
+app.post("/api/runs", limit("stress tests", 3, envNumber("DAILY_STRESS_TESTS", 30)));
 app.post("/api/runs/:id/lanes/:lane/fix", limit("fixes", 3, envNumber("DAILY_FIXES", 15)));
 app.post("/api/ai/responses", limit("AI requests", 150, envNumber("DAILY_AI_REQUESTS", 1500)));
 app.all("/mcp", limit("MCP calls", 200, envNumber("DAILY_MCP_CALLS", 2000)));
@@ -93,7 +93,7 @@ app.get("/api/runs/:id/stream", (c) => {
   });
 });
 
-// DummyRun for coding agents. Stateless: each request gets its own MCP server.
+// Resilience Lab for coding agents. Stateless: each request gets its own MCP server.
 app.all("/mcp", async (c) => {
   const { incoming, outgoing } = c.env as HttpBindings;
   const server = createMcpServer(lab, publicUrl);
@@ -104,4 +104,4 @@ app.all("/mcp", async (c) => {
   return RESPONSE_ALREADY_SENT;
 });
 
-serve({ fetch: app.fetch, port }, () => console.log(`DummyRun lab on http://localhost:${port}`));
+serve({ fetch: app.fetch, port }, () => console.log(`Checkout Resilience Lab on http://localhost:${port}`));

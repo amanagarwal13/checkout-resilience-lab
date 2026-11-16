@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 
-// The demo store DummyRun tests. "original" is the store as its owner wrote
-// it; "fixed" is a hand-fixed reference used to check DummyRun's own verdicts.
+// The demo store Resilience Lab tests. "original" is the store as its owner wrote
+// it; "fixed" is a hand-fixed reference used to check Resilience Lab's own verdicts.
 export const storeBuilds = {
   original: resolve("stores/ember-and-wick/original"),
   fixed: resolve("stores/ember-and-wick/fixed"),

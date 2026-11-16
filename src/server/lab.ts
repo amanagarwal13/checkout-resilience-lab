@@ -45,7 +45,7 @@ export type LabEvent =
 const RUNS_DIR = "runs";
 const MAX_PARALLEL = Number(process.env.MAX_PARALLEL ?? 3);
 
-// Runs crash tests for the web interface and keeps the history.
+// Runs stress tests for the web interface and keeps the history.
 export function createLab() {
   const runs = new Map<string, LabRun>();
   const listeners = new Map<string, Set<(e: LabEvent) => void>>();
@@ -130,7 +130,7 @@ export function createLab() {
     isBusy: () => Boolean(active),
 
     start(store: StoreLabel, scenarioIds?: string[]): LabRun {
-      if (active) throw new Error("A crash test is already running. Wait for it to finish.");
+      if (active) throw new Error("A stress test is already running. Wait for it to finish.");
       const picked = scenarioIds?.length ? scenarios.filter((s) => scenarioIds.includes(s.id)) : scenarios;
       const run: LabRun = {
         id: new Date().toISOString().replace(/[:.]/g, "-"),

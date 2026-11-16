@@ -4,7 +4,7 @@ import { runScenario, type RunResult } from "./runScenario.js";
 import { scenarios } from "./scenarios.js";
 import { fromCents, storeBuilds } from "./storeProfile.js";
 
-// Usage: npm run crash -- [scenario ...] [original|fixed]
+// Usage: npm run stress -- [scenario ...] [original|fixed]
 const args = process.argv.slice(2);
 const ids = scenarios.map((s) => s.id);
 const selected = args.some((a) => ids.includes(a)) ? scenarios.filter((s) => args.includes(s.id)) : scenarios;
@@ -28,13 +28,13 @@ for (const scenario of selected) {
           const shown = e.step.tool === "view_shop" ? "" : JSON.stringify(e.step.args);
           console.log(`    ${scenario.persona.name} → ${e.step.tool}(${shown})\n      ${e.step.result.slice(0, 160)}`);
         }
-        if (e.type === "paypal" && e.entry.fault) console.log(`    [DummyRun] ${e.entry.fault}`);
+        if (e.type === "paypal" && e.entry.fault) console.log(`    [Resilience Lab] ${e.entry.fault}`);
       },
     });
     if (result.verdict.inconclusive) console.log(`  INCONCLUSIVE  ${result.verdict.inconclusive}`);
     else for (const c of result.verdict.checks) console.log(`  ${c.passed ? "PASS" : "FAIL"}  ${c.name} — ${c.detail}`);
     for (const r of result.verdict.atRisk) console.log(`  AT RISK  ${r.reason}: $${fromCents(r.cents)}`);
-    console.log(`  Safety rating ${result.verdict.rating}/5 · money at risk $${fromCents(result.verdict.atRiskCents)}`);
+    console.log(`  Resilience score ${result.verdict.rating}/5 · money at risk $${fromCents(result.verdict.atRiskCents)}`);
     results.push(result);
   }
 }

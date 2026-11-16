@@ -9,7 +9,7 @@ import { findScenario, scenarios } from "./scenarios.js";
 import { storeBuilds } from "./storeProfile.js";
 
 // Usage: npm run fix -- <scenario>
-// Crash-test the original store, let the AI investigator find and fix the
+// Stress-test the original store, let the AI investigator find and fix the
 // bug in a copy, then re-run the same scenario against the patched copy.
 const scenario = findScenario(process.argv[2] ?? "");
 if (!scenario) {
@@ -25,7 +25,7 @@ function show(label: string, r: RunResult) {
   console.log(`\n[${label}]`);
   if (r.verdict.inconclusive) console.log(`  INCONCLUSIVE  ${r.verdict.inconclusive}`);
   for (const c of r.verdict.checks) console.log(`  ${c.passed ? "PASS" : "FAIL"}  ${c.name} — ${c.detail}`);
-  console.log(`  Safety rating ${r.verdict.rating}/5 · money at risk $${fromCents(r.verdict.atRiskCents)}`);
+  console.log(`  Resilience score ${r.verdict.rating}/5 · money at risk $${fromCents(r.verdict.atRiskCents)}`);
 }
 
 console.log(`=== ${scenario.title} ===`);
@@ -51,12 +51,12 @@ if (before.verdict.inconclusive) {
   const compiled = await typecheck(patchedDir);
   writeFileSync(join(runDir, scenario.id, "diagnosis.json"), JSON.stringify({ ...diagnosis, typecheck: compiled }, null, 2));
   if (!compiled.ok) {
-    console.log(`\n  The patch doesn't compile, so DummyRun won't run it:\n${compiled.output}`);
+    console.log(`\n  The patch doesn't compile, so Resilience Lab won't run it:\n${compiled.output}`);
   } else {
     console.log("\n  Patch compiles. Re-running the same scenario against the patched store…");
     const after = await runScenario({ scenario, store: { label: "patched", dir: patchedDir }, proxy, runDir });
     show("After: patched store", after);
-    console.log(`\n  Safety rating ${before.verdict.rating}/5 → ${after.verdict.rating}/5 · money at risk $${fromCents(before.verdict.atRiskCents)} → $${fromCents(after.verdict.atRiskCents)}`);
+    console.log(`\n  Resilience score ${before.verdict.rating}/5 → ${after.verdict.rating}/5 · money at risk $${fromCents(before.verdict.atRiskCents)} → $${fromCents(after.verdict.atRiskCents)}`);
   }
 }
 

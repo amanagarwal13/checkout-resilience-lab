@@ -35,7 +35,7 @@ function page() {
   const settings = { licenseKey: process.env.AG_STUDIO_LICENSE_KEY || undefined, aiModels: aiModels() };
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DummyRun dashboard</title>
+<title>Checkout Resilience Lab dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
 <style>
@@ -51,10 +51,10 @@ function page() {
   #dashboard { flex: 1; min-height: 0; }
 </style></head>
 <body>
-<header class="bar"><a class="brand" href="/"><span class="target" aria-hidden="true"></span><span class="wordmark">DummyRun</span></a>
-<nav><a href="/">Crash tests</a><a href="/dashboard" aria-current="page">Dashboard</a></nav></header>
+<header class="bar"><a class="brand" href="/"><span class="target" aria-hidden="true"></span><span class="wordmark">Checkout Resilience Lab</span></a>
+<nav><a href="/">Stress tests</a><a href="/dashboard" aria-current="page">Dashboard</a></nav></header>
 <div id="dashboard"></div>
-<script>window.DUMMYRUN = ${JSON.stringify(settings)};</script>
+<script>window.RESILIENCE_LAB = ${JSON.stringify(settings)};</script>
 <script type="module" src="/dashboard.js"></script>
 </body></html>`;
 }
@@ -64,7 +64,7 @@ export function dashboardRoutes(app: Hono, lab: Lab) {
   app.get("/dashboard.js", (c) => c.body(readFileSync(BUNDLE), 200, { "Content-Type": "text/javascript; charset=utf-8" }));
   app.get("/api/dashboard/data", (c) => c.json(buildDashboardData(lab.list())));
 
-  // Evidence for the crash analyst agent: the latest finished test of one scenario.
+  // Evidence for the resilience analyst agent: the latest finished test of one scenario.
   app.get("/api/dashboard/explain", (c) => {
     const wanted = (c.req.query("scenario") ?? "").toLowerCase().replace(/[^a-z]/g, "");
     for (const run of lab.list()) {
@@ -81,7 +81,7 @@ export function dashboardRoutes(app: Hono, lab: Lab) {
           injectedFaults: lane.result!.proxyLog.filter((e) => e.fault).map((e) => ({ call: `${e.method} ${e.path}`, fault: e.fault })),
           diagnosis: lane.fix?.diagnosis
             ? { explanation: lane.fix.diagnosis.explanation, where: `${lane.fix.diagnosis.rootCause.file}:${lane.fix.diagnosis.rootCause.line}`, fix: lane.fix.diagnosis.fix.summary }
-            : "Not investigated yet. Use Investigate and fix on the Crash tests page.",
+            : "Not investigated yet. Use Investigate and fix on the Stress tests page.",
           afterFix: lane.fix?.after ? { rating: lane.fix.after.verdict.rating, usdAtRisk: lane.fix.after.verdict.atRiskCents / 100 } : null,
         });
       }

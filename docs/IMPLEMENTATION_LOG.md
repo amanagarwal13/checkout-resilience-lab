@@ -1,7 +1,13 @@
-# DummyRun implementation log
+# Implementation log
 
 One entry per phase of [PLAN.md](PLAN.md): what was built, decisions, results
 and problems. Newest at the bottom. Dates are 2026.
+
+The project was called DummyRun while it was built, and this log keeps that
+name. It's now Checkout Resilience Lab: "crash test" became "stress test",
+"safety rating" became "resilience score", `npm run crash` became
+`npm run stress`, the SDK helper `dummyrun()` became `resilienceLab()` and
+`DUMMYRUN_PAYPAL_API` became `RESILIENCE_LAB_PAYPAL_API`.
 
 ---
 

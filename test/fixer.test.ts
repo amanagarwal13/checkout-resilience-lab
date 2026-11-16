@@ -16,8 +16,8 @@ test("edits must name a real file and match exactly once", () => {
 });
 
 test("fixes go into a copy and never touch the original store", () => {
-  const original = mkdtempSync(join(tmpdir(), "dummyrun-original-"));
-  const patched = mkdtempSync(join(tmpdir(), "dummyrun-patched-"));
+  const original = mkdtempSync(join(tmpdir(), "resilience-lab-original-"));
+  const patched = mkdtempSync(join(tmpdir(), "resilience-lab-patched-"));
   writeFileSync(join(original, "app.ts"), source["app.ts"]);
 
   copyStore(original, patched);
@@ -29,8 +29,8 @@ test("fixes go into a copy and never touch the original store", () => {
 });
 
 test("plain-JS stores: named files are copied with their folders, and a patch must parse", async () => {
-  const original = mkdtempSync(join(tmpdir(), "dummyrun-js-original-"));
-  const patched = mkdtempSync(join(tmpdir(), "dummyrun-js-patched-"));
+  const original = mkdtempSync(join(tmpdir(), "resilience-lab-js-original-"));
+  const patched = mkdtempSync(join(tmpdir(), "resilience-lab-js-patched-"));
   mkdirSync(join(original, "client"));
   writeFileSync(join(original, "server.js"), "const a = 1;\n");
   writeFileSync(join(original, "client", "app.js"), "let clicks = 0;\n");

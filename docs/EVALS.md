@@ -7,11 +7,11 @@ npm run eval -- investigator --n 3   # does the investigator's own patch fix the
 npm run eval -- scam --n 10          # prompt-only refund policy vs the policy enforced in code
 ```
 
-`EVAL_PARALLEL=2` runs two at a time. A full investigator eval makes about 20 crash tests and 15 GPT-5.5 calls; the scam eval makes 20 crash tests.
+`EVAL_PARALLEL=2` runs two at a time. A full investigator eval makes about 20 stress tests and 15 GPT-5.5 calls; the scam eval makes 20 stress tests.
 
 ## Investigator: does its own patch fix the store?
 
-Each scenario was crash-tested once on the store as written, then the investigator was run 3 times on that evidence. Each patch was applied to a fresh copy, type-checked, and the same scenario re-run against PayPal's sandbox. "Fixed" means every money check passed with $0 at risk.
+Each scenario was stress-tested once on the store as written, then the investigator was run 3 times on that evidence. Each patch was applied to a fresh copy, type-checked, and the same scenario re-run against PayPal's sandbox. "Fixed" means every money check passed with $0 at risk.
 
 | Scenario | Money at risk before | Fixed | Compiled | Root cause it named |
 |---|---|---|---|---|
@@ -26,22 +26,22 @@ Each scenario was crash-tested once on the store as written, then the investigat
 The two misses, and what caught them:
 
 - **double-pay, attempt 2.** The patch gave each checkout a request ID, but generated it per click, so two clicks still made two PayPal orders and two charges. The re-run caught it: $26.00 still at risk. A patch that reads well can still be wrong, which is why every fix is re-tested against PayPal before it's shown as fixed.
-- **declined-card, attempt 3.** The patch didn't type-check, so it was never run. DummyRun reports it as a failed fix with the compiler output.
+- **declined-card, attempt 3.** The patch didn't type-check, so it was never run. Resilience Lab reports it as a failed fix with the compiler output.
 
 ## Investigator on PayPal's own example: code we didn't write
 
 ```bash
-npm run crash:paypal-example -- double-pay slow-capture declined-card --investigate
+npm run stress:paypal-example -- double-pay slow-capture declined-card --investigate
 ```
 
 The same investigator (same model, PayPal references and rules) was run on PayPal's advanced-integration example (`stores/paypal-advanced-example`, plain JavaScript). For each failing scenario it gets:
 
-- **Evidence:** the failed checks, the PayPal calls from DummyRun's proxy log (with any injected fault), what the page said and the example server's own `console.error` output. The demo store's evidence has the AI shopper's steps instead; this shopper is scripted.
+- **Evidence:** the failed checks, the PayPal calls from Resilience Lab's proxy log (with any injected fault), what the page said and the example server's own `console.error` output. The demo store's evidence has the AI shopper's steps instead; this shopper is scripted.
 - **Source:** `server.js`, `client/app.js` and `client/index.html` as published, plus a short note on how the example is laid out.
 
-It never sees `stores/paypal-advanced-example-fixed` or its `// DummyRun fix` comments. Each patch goes into a copy under `runs/paypal-example-investigate/`, has to pass `node --check` (there's no compiler), and then the same scenario is re-run against PayPal's sandbox. "Fixed" means every check passed with $0 at risk.
+It never sees `stores/paypal-advanced-example-fixed` or its `// Resilience Lab fix` comments. Each patch goes into a copy under `runs/paypal-example-investigate/`, has to pass `node --check` (there's no compiler), and then the same scenario is re-run against PayPal's sandbox. "Fixed" means every check passed with $0 at risk.
 
-Three attempts per scenario, each with a fresh crash test of the original first (Oct 20, 2026, `gpt-5.5`):
+Three attempts per scenario, each with a fresh stress test of the original first (Oct 20, 2026, `gpt-5.5`):
 
 | Scenario | Before | Fixed | Parsed | Root cause it named |
 |---|---|---|---|---|
@@ -56,9 +56,9 @@ The misses:
 - **double-pay, 2 of 3.** All three patches made the same sensible change: the page sends a checkout ID, the server uses it as the `PayPal-Request-Id` when creating the order, and uses the order ID as the request ID when capturing. But a double-click sends both create-order requests 150 ms apart, so both were in flight at PayPal at the same time (the store's SDK log shows both requests before either answer). In 2 of 3 runs the sandbox created two orders under the same `PayPal-Request-Id` (201 both times) and both were captured. In the third it returned the first order (200) and the patch worked. A request ID makes retries safe, but in the sandbox it didn't reliably stop two simultaneous requests. The hand fix disables the button; a server-side lock per checkout ID would also work. No patch did either.
 - **declined-card, 3 of 3.** Every patch fixed the first bug correctly: the server now passes PayPal's 422 `INSTRUMENT_DECLINED` back to the page instead of a generic 500. That exposed the second bug (the one the hand fix also needed): the page's decline handling calls `actions.restart()`, which card payments don't have, so the shopper saw `TypeError: actions.restart is not a function`. The bug is visible in `client/app.js`, but the evidence only pointed at the server, and no patch looked further. No money was at risk either way.
 
-One more attempt ran before a DummyRun bug was fixed, and it isn't in the table: double-pay fixed, declined-card the same miss, and slow-capture reported "not fixed". That slow-capture patch kept the checkout ID in a cookie, and DummyRun's page server (which stands in for the example's Vite dev server) didn't pass cookies through, though Vite's proxy does. With cookies forwarded, the same patch scored 5/5 with one charge, and a normal purchase still worked. The miss was DummyRun's fault, not the investigator's. Counting that attempt, the totals are double-pay 2 of 4, slow-capture 4 of 4 (one only after the page-server fix) and declined-card 0 of 4.
+One more attempt ran before a Resilience Lab bug was fixed, and it isn't in the table: double-pay fixed, declined-card the same miss, and slow-capture reported "not fixed". That slow-capture patch kept the checkout ID in a cookie, and Resilience Lab's page server (which stands in for the example's Vite dev server) didn't pass cookies through, though Vite's proxy does. With cookies forwarded, the same patch scored 5/5 with one charge, and a normal purchase still worked. The miss was Resilience Lab's fault, not the investigator's. Counting that attempt, the totals are double-pay 2 of 4, slow-capture 4 of 4 (one only after the page-server fix) and declined-card 0 of 4.
 
-A run of all three scenarios makes 6 crash tests and 3 GPT-5.5 calls.
+A run of all three scenarios makes 6 stress tests and 3 GPT-5.5 calls.
 
 ## Refund scam: prompt-only guardrail vs code guardrail
 

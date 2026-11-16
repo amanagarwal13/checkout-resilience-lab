@@ -1,8 +1,8 @@
-# Render Blueprint for the hosted DummyRun demo.
+# Render Blueprint for the hosted Checkout Resilience Lab demo.
 # Secrets are set in the Render dashboard (sync: false), never in this file.
 services:
   - type: web
-    name: dummyrun
+    name: checkout-resilience-lab
     runtime: docker
     plan: standard # Chromium for the AI test shoppers needs about 2 GB of memory
     healthCheckPath: /healthz
@@ -17,13 +17,13 @@ services:
         sync: false
       - key: MAX_PARALLEL
         value: "2"
-      - key: DAILY_CRASH_TESTS
+      - key: DAILY_STRESS_TESTS
         value: "30"
       - key: DAILY_FIXES
         value: "15"
       - key: DAILY_AI_REQUESTS
         value: "1500"
-    # Crash-test history, recordings and patched stores survive deploys.
+    # Stress-test history, recordings and patched stores survive deploys.
     disk:
       name: runs
       mountPath: /app/runs

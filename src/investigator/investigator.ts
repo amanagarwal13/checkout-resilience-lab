@@ -37,12 +37,12 @@ function numbered(source: string) {
   return source.split("\n").map((line, i) => `${String(i + 1).padStart(4)}| ${line}`).join("\n");
 }
 
-// Only what the investigator needs: the failed checks, the faults DummyRun
+// Only what the investigator needs: the failed checks, the faults Resilience Lab
 // injected, the PayPal calls and what the shopper saw.
 function evidenceSummary(scenario: Scenario, result: RunResult) {
   return JSON.stringify(
     {
-      scenario: { id: scenario.id, title: scenario.title, whatDummyRunDid: scenario.summary },
+      scenario: { id: scenario.id, title: scenario.title, whatTheLabDid: scenario.summary },
       failedChecks: result.verdict.checks.filter((c) => !c.passed),
       moneyAtRisk: result.verdict.atRisk,
       paypalCalls: result.proxyLog.map((e) => ({
@@ -99,7 +99,7 @@ const schema = {
   },
 } as const;
 
-const INSTRUCTIONS = `You are DummyRun's investigator. DummyRun crash-tested a PayPal store with AI test shoppers and injected realistic failures. A money check failed.
+const INSTRUCTIONS = `You are Resilience Lab's investigator. Resilience Lab stress-tested a PayPal store with AI test shoppers and injected realistic failures. A money check failed.
 Find the root cause in the store's source code and write the smallest correct fix.
 Rules:
 - Base the diagnosis on the evidence: failed checks, PayPal calls (with any injected fault) and what the shopper saw.

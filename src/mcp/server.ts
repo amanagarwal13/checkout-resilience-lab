@@ -4,8 +4,8 @@ import { z } from "zod";
 import { fromCents } from "../lab/storeProfile.js";
 import type { Lab, LabRun, Lane } from "../server/lab.js";
 
-// DummyRun as tools for coding agents (Claude Code, Cursor, Codex...).
-// The loop it enables: "crash-test my checkout" -> "fix it" -> "run it again",
+// Resilience Lab as tools for coding agents (Claude Code, Cursor, Codex...).
+// The loop it enables: "stress-test my checkout" -> "fix it" -> "run it again",
 // without leaving the editor. Locally the lab tests the store folder in the
 // developer's working copy, so a fix the agent saves is what the re-run tests.
 
@@ -21,7 +21,7 @@ function laneSummary(l: Lane) {
     ...(v?.inconclusive ? { inconclusive: v.inconclusive } : {}),
     ...(v && !v.inconclusive
       ? {
-          safety_rating: `${v.rating}/5`,
+          resilience_score: `${v.rating}/5`,
           money_at_risk_usd: fromCents(v.atRiskCents),
           failed_checks: v.checks.filter((c) => !c.passed).map((c) => `${c.name}: ${c.detail}`),
         }
@@ -38,7 +38,7 @@ function runSummary(run: LabRun, watchUrl: string) {
     watch_url: watchUrl,
     ...(judged.length
       ? {
-          safety_rating: `${Math.min(...judged.map((l) => l.result!.verdict.rating))}/5 (weakest test)`,
+          resilience_score: `${Math.min(...judged.map((l) => l.result!.verdict.rating))}/5 (weakest test)`,
           total_money_at_risk_usd: fromCents(judged.reduce((s, l) => s + l.result!.verdict.atRiskCents, 0)),
         }
       : {}),
@@ -47,23 +47,23 @@ function runSummary(run: LabRun, watchUrl: string) {
 }
 
 export function createMcpServer(lab: Lab, baseUrl: string) {
-  const server = new McpServer({ name: "dummyrun", version: "0.1.0" });
+  const server = new McpServer({ name: "checkout-resilience-lab", version: "0.1.0" });
   const watch = (id: string) => `${baseUrl}/?run=${encodeURIComponent(id)}`;
   const findLane = (runId: string, scenario: string) => lab.get(runId)?.lanes.find((l) => l.scenario === scenario);
 
   server.registerTool(
     "list_scenarios",
-    { title: "List crash-test scenarios", description: "The failures DummyRun can throw at a PayPal checkout, with the AI test shopper used for each." },
+    { title: "List stress-test scenarios", description: "The failures Resilience Lab can throw at a PayPal checkout, with the AI test shopper used for each." },
     async () => text(lab.scenarios()),
   );
 
   server.registerTool(
-    "start_crash_test",
+    "start_stress_test",
     {
-      title: "Start a crash test",
+      title: "Start a stress test",
       description:
-        "Send AI test shoppers through the store's real PayPal sandbox checkout while DummyRun injects failures, then check every charge and refund in PayPal's own records. " +
-        "Returns at once with a run_id and a link to watch live; call get_crash_test to wait for the results. A full run takes a few minutes.",
+        "Send AI test shoppers through the store's real PayPal sandbox checkout while Resilience Lab injects failures, then check every charge and refund in PayPal's own records. " +
+        "Returns at once with a run_id and a link to watch live; call get_stress_test to wait for the results. A full run takes a few minutes.",
       inputSchema: {
         scenarios: z.array(z.string()).optional().describe("Scenario ids from list_scenarios. Omit to run them all."),
         store: z.enum(["original", "fixed"]).optional().describe("'original' (default) is the store in the working copy; 'fixed' is the hand-fixed reference."),
@@ -72,7 +72,7 @@ export function createMcpServer(lab: Lab, baseUrl: string) {
     async ({ scenarios, store }) => {
       try {
         const run = lab.start(store ?? "original", scenarios);
-        return text({ run_id: run.id, watch_url: watch(run.id), next: "Call get_crash_test with this run_id and wait_seconds to get the results." });
+        return text({ run_id: run.id, watch_url: watch(run.id), next: "Call get_stress_test with this run_id and wait_seconds to get the results." });
       } catch (error) {
         return fail((error as Error).message);
       }
@@ -80,10 +80,10 @@ export function createMcpServer(lab: Lab, baseUrl: string) {
   );
 
   server.registerTool(
-    "get_crash_test",
+    "get_stress_test",
     {
-      title: "Get crash-test results",
-      description: "Status and money results of a crash test. Waits up to wait_seconds for it to finish.",
+      title: "Get stress-test results",
+      description: "Status and money results of a stress test. Waits up to wait_seconds for it to finish.",
       inputSchema: {
         run_id: z.string(),
         wait_seconds: z.number().min(0).max(50).optional().describe("How long to wait for the run to finish, up to 50 seconds."),
@@ -92,7 +92,7 @@ export function createMcpServer(lab: Lab, baseUrl: string) {
     async ({ run_id, wait_seconds }) => {
       const deadline = Date.now() + (wait_seconds ?? 0) * 1000;
       let run = lab.get(run_id);
-      if (!run) return fail(`No crash test with id ${run_id}`);
+      if (!run) return fail(`No stress test with id ${run_id}`);
       while (!run.finishedAt && Date.now() < deadline) {
         await sleep(1000);
         run = lab.get(run_id)!;
@@ -105,7 +105,7 @@ export function createMcpServer(lab: Lab, baseUrl: string) {
     "get_test_evidence",
     {
       title: "Get the evidence for one test",
-      description: "For one scenario in a crash test: failed money checks, money at risk, every PayPal call with any injected fault, and what the AI shopper did and saw.",
+      description: "For one scenario in a stress test: failed money checks, money at risk, every PayPal call with any injected fault, and what the AI shopper did and saw.",
       inputSchema: { run_id: z.string(), scenario: z.string() },
     },
     async ({ run_id, scenario }) => {
@@ -128,8 +128,8 @@ export function createMcpServer(lab: Lab, baseUrl: string) {
     {
       title: "Diagnose a failure and propose the fix",
       description:
-        "DummyRun's investigator reads the test's evidence and the store's source and returns a plain-English explanation, the exact location and code edits. " +
-        "Nothing is changed. Apply each edit to the named file (its 'find' text appears exactly once), then run start_crash_test again to verify.",
+        "Resilience Lab's investigator reads the test's evidence and the store's source and returns a plain-English explanation, the exact location and code edits. " +
+        "Nothing is changed. Apply each edit to the named file (its 'find' text appears exactly once), then run start_stress_test again to verify.",
       inputSchema: { run_id: z.string(), scenario: z.string() },
     },
     async ({ run_id, scenario }) => {
@@ -142,7 +142,7 @@ export function createMcpServer(lab: Lab, baseUrl: string) {
           fix: diagnosis.fix.summary,
           paypal_guidance: diagnosis.paypalGuidance,
           edits: diagnosis.fix.edits.map((e) => ({ file: path(e.file), find: e.find, replace: e.replace })),
-          next: "Apply the edits, then call start_crash_test with the same scenario to verify the fix against PayPal's sandbox.",
+          next: "Apply the edits, then call start_stress_test with the same scenario to verify the fix against PayPal's sandbox.",
         });
       } catch (error) {
         return fail((error as Error).message);
@@ -170,8 +170,8 @@ export function createMcpServer(lab: Lab, baseUrl: string) {
         ...(fix.message ? { message: fix.message } : {}),
         ...(fix.after
           ? {
-              before: { safety_rating: `${lane.result.verdict.rating}/5`, money_at_risk_usd: fromCents(lane.result.verdict.atRiskCents) },
-              after: { safety_rating: `${fix.after.verdict.rating}/5`, money_at_risk_usd: fromCents(fix.after.verdict.atRiskCents) },
+              before: { resilience_score: `${lane.result.verdict.rating}/5`, money_at_risk_usd: fromCents(lane.result.verdict.atRiskCents) },
+              after: { resilience_score: `${fix.after.verdict.rating}/5`, money_at_risk_usd: fromCents(fix.after.verdict.atRiskCents) },
             }
           : { next: "Still working. Call verify_fix_in_copy again to keep waiting." }),
         watch_url: watch(run_id),

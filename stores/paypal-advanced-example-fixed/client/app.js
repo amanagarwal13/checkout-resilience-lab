@@ -56,7 +56,7 @@ async function createOrderCallback() {
       const errorDetail = orderData?.details?.[0];
   
       // this actions.restart() behavior only applies to the Buttons component
-      // DummyRun fix: with card fields this branch was reached with an actions object that has no restart(), so check for restart itself.
+      // Resilience Lab fix: with card fields this branch was reached with an actions object that has no restart(), so check for restart itself.
       if (errorDetail?.issue === "INSTRUMENT_DECLINED" && typeof actions?.restart === "function") {
         // (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
         // recoverable state, per https://developer.paypal.com/docs/checkout/standard/customize/handle-funding-failures/
@@ -124,7 +124,7 @@ async function createOrderCallback() {
     expiryField.render("#card-expiry-field-container");
   
     // Add click listener to submit button and call the submit function on the CardField component
-    // DummyRun fix: one payment at a time. Pay stays disabled until the payment fails.
+    // Resilience Lab fix: one payment at a time. Pay stays disabled until the payment fails.
     const payButton = document.getElementById("card-field-submit-button");
     payButton.addEventListener("click", () => {
         if (payButton.disabled) return;
@@ -166,7 +166,7 @@ async function createOrderCallback() {
   function resultMessage(message) {
     const container = document.querySelector("#result-message");
     container.innerHTML = message;
-    // DummyRun fix: let the shopper try again after a failure, not after a success.
+    // Resilience Lab fix: let the shopper try again after a failure, not after a success.
     const payButton = document.getElementById("card-field-submit-button");
     if (payButton && !message.startsWith("Transaction COMPLETED")) payButton.disabled = false;
   }

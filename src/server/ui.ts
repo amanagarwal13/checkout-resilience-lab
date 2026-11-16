@@ -1,11 +1,11 @@
-// The DummyRun web interface: one page, no build step.
+// The Resilience Lab web interface: one page, no build step.
 export function page() {
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DummyRun</title>
+<title>Checkout Resilience Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
@@ -13,23 +13,23 @@ export function page() {
 </head>
 <body>
 <header class="bar">
-  <div class="brand"><span class="target" aria-hidden="true"></span><span class="wordmark">DummyRun</span></div>
+  <div class="brand"><span class="target" aria-hidden="true"></span><span class="wordmark">Checkout Resilience Lab</span></div>
   <div class="store-pick">
-    <label for="store">Crash-testing <strong>Ember and Wick</strong></label>
+    <label for="store">Stress-testing <strong>Ember and Wick</strong></label>
     <select id="store">
       <option value="original">as the owner wrote it</option>
       <option value="fixed">hand-fixed reference</option>
     </select>
   </div>
-  <button id="run" class="primary">Run crash test</button>
-  <nav class="nav"><a href="/" aria-current="page">Crash tests</a><a href="/dashboard">Dashboard</a></nav>
+  <button id="run" class="primary">Run stress test</button>
+  <nav class="nav"><a href="/" aria-current="page">Stress tests</a><a href="/dashboard">Dashboard</a></nav>
 </header>
 
 <main>
   <section class="summary" id="summary" aria-live="polite"></section>
   <section class="lanes" id="lanes" aria-label="Test shoppers"></section>
   <section class="detail" id="detail"></section>
-  <section class="history" id="history" aria-label="Earlier crash tests"></section>
+  <section class="history" id="history" aria-label="Earlier stress tests"></section>
 </main>
 
 <script>${script}</script>
@@ -225,7 +225,7 @@ function clock(l) {
 function renderSummary() {
   const run = state.run;
   if (!run) {
-    $("summary").innerHTML = '<div class="empty-state"><h2>Send the dummies in before your customers do</h2><p>DummyRun sends AI test shoppers through a real PayPal checkout, injects the failures real traffic brings, then checks every charge and refund in PayPal’s own records. Press Run crash test to start.</p></div>';
+    $("summary").innerHTML = '<div class="empty-state"><h2>Test your checkout before your customers do</h2><p>Checkout Resilience Lab sends AI test shoppers through a real PayPal checkout, injects the failures real traffic brings, then checks every charge and refund in PayPal’s own records. Press Run stress test to start.</p></div>';
     return;
   }
   const done = run.lanes.filter((l) => l.result);
@@ -235,7 +235,7 @@ function renderSummary() {
   const running = run.lanes.filter((l) => l.status === "running" || l.status === "checking").length;
   const finished = Boolean(run.finishedAt);
   $("summary").innerHTML =
-    '<div class="rating">' + marks(rating) + "<p>" + (judged.length ? "Safety rating " + rating + " of 5, set by the weakest test" : "No results yet") + "</p></div>" +
+    '<div class="rating">' + marks(rating) + "<p>" + (judged.length ? "Resilience score " + rating + " of 5, set by the weakest test" : "No results yet") + "</p></div>" +
     '<div class="risk ' + (judged.length ? (risk > 0 ? "bad" : "good") : "") + '"><div class="amount">' + (judged.length ? money(risk) : "–") + "</div><p>" + (judged.length ? "money at risk across " + done.length + " of " + run.lanes.length + " tests" : "money at risk shows here as tests finish") + "</p></div>" +
     '<p class="state">' + (finished ? "Finished " + new Date(run.finishedAt).toLocaleTimeString() : running + " running, " + run.lanes.filter((l) => l.status === "queued").length + " waiting") + "<br>Store: " + (run.store === "original" ? "as the owner wrote it" : "hand-fixed reference") + "</p>";
 }
@@ -286,7 +286,7 @@ function whyHtml(l) {
   let html = '<div class="why"><h3>Why it broke</h3>';
   if (!fix) {
     html += state.run.store === "original"
-      ? '<p class="explain">DummyRun’s investigator can read this test’s evidence and the store’s code, explain the failure and write a fix. The fix is applied to a copy of the store and the same test runs again.</p><button class="primary" data-fix="' + l.scenario + '">Investigate and fix</button>'
+      ? '<p class="explain">Resilience Lab’s investigator can read this test’s evidence and the store’s code, explain the failure and write a fix. The fix is applied to a copy of the store and the same test runs again.</p><button class="primary" data-fix="' + l.scenario + '">Investigate and fix</button>'
       : '<p class="explain">This is the hand-fixed reference store, so there is nothing to patch.</p>';
     return html + "</div>";
   }
@@ -334,7 +334,7 @@ function resultText(s) {
 function renderHistory() {
   const items = state.history.filter((r) => !state.run || r.id !== state.run.id).slice(0, 8);
   if (!items.length) { $("history").innerHTML = ""; return; }
-  $("history").innerHTML = "<h2>Earlier crash tests</h2><ul>" + items.map((r) => {
+  $("history").innerHTML = "<h2>Earlier stress tests</h2><ul>" + items.map((r) => {
     const judged = r.lanes.filter((l) => l.verdict && !l.verdict.inconclusive);
     const risk = judged.reduce((s, l) => s + l.verdict.atRiskCents, 0);
     return '<li><button data-open="' + r.id + '"><span><span class="when">' + new Date(r.startedAt).toLocaleString() + '</span><br><span class="meta">' + (r.store === "original" ? "Store as written" : "Hand-fixed reference") + ", " + r.lanes.length + " tests</span></span><span>" + money(risk) + " at risk</span></button></li>";

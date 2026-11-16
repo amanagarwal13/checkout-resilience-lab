@@ -1,6 +1,6 @@
 import type { Context, Next } from "hono";
 
-// Spending guards for the public demo: every crash test, fix and AI message
+// Spending guards for the public demo: every stress test, fix and AI message
 // costs OpenAI tokens and PayPal sandbox calls. Limits are per visitor per hour
 // and for the whole service per day, both in memory.
 

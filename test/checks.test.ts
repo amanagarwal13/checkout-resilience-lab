@@ -25,7 +25,7 @@ test("a refund paid out twice fails and puts the extra at risk", () => {
   assert.deepEqual(v.atRisk.map((r) => r.reason), ["Refunded more than was owed"]);
 });
 
-test("money at risk caps the rating at two stars", () => {
+test("money at risk caps the rating at 2", () => {
   const v = judge(scenario("double-pay"), evidence([order({ id: "A" }), order({ id: "B" })]));
   assert.deepEqual(failed(v), ["One cart, one charge"]);
   assert.equal(v.atRiskCents, 4200);

@@ -7,7 +7,7 @@ export interface PayPalOptions {
   clientId: string;
   clientSecret: string;
   // Optional: send every SDK request to this base URL instead of PayPal's
-  // sandbox. This is the one setting DummyRun needs to sit in between.
+  // sandbox. This is the one setting Resilience Lab needs to sit in between.
   apiBase?: string;
 }
 

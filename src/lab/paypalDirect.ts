@@ -1,6 +1,6 @@
 import { PAYPAL_SANDBOX_API, config } from "../config.js";
 
-// DummyRun's own view of the money: straight from PayPal, never through the proxy
+// Resilience Lab's own view of the money: straight from PayPal, never through the proxy
 // or the store, so a buggy store can't hide anything.
 async function token(): Promise<string> {
   const basic = Buffer.from(`${config.paypalClientId}:${config.paypalClientSecret}`).toString("base64");

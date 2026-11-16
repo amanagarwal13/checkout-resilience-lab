@@ -23,7 +23,7 @@ export interface Verdict {
   checks: Check[];
   atRiskCents: number;
   atRisk: { reason: string; cents: number }[];
-  rating: number; // 1 to 5 stars
+  rating: number; // 1 to 5
 }
 
 // What the order should have cost, from the server-side catalog.
@@ -92,7 +92,7 @@ export function judge(scenario: Scenario, evidence: Evidence): Verdict {
     const said = evidence.shopper.steps.find((s) => s.tool === "buy_items")?.result ?? "the shopper never tried to pay";
     return { inconclusive: `The test shopper couldn't complete a purchase (${said.replace(/^Error: /, "")}).`, checks, atRisk, atRiskCents, rating: 0 };
   }
-  // Losing money caps the rating at two stars, however many other checks pass.
+  // Losing money caps the rating at 2, however many other checks pass.
   const base = Math.max(1, Math.round((5 * passed) / checks.length));
   return { checks, atRisk, atRiskCents, rating: atRiskCents > 0 ? Math.min(base, 2) : base };
 }

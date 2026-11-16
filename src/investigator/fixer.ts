@@ -27,7 +27,7 @@ export function applyEdits(dir: string, edits: Edit[]) {
   }
 }
 
-// A patch has to compile before DummyRun will run shoppers against it.
+// A patch has to compile before Resilience Lab will run shoppers against it.
 export async function typecheck(dir: string): Promise<{ ok: boolean; output: string }> {
   writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ extends: ROOT_TSCONFIG, include: ["./*.ts"] }, null, 2));
   try {

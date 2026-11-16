@@ -69,7 +69,7 @@ export function createPayPalProxy({ port, upstream = PAYPAL_SANDBOX_API }: { por
   const server: Server = createServer((req, res) => {
     handle(req, res).catch((error) => {
       if (!res.headersSent) res.writeHead(502, { "content-type": "application/json" });
-      res.end(JSON.stringify({ name: "DUMMYRUN_PROXY_ERROR", message: String(error) }));
+      res.end(JSON.stringify({ name: "RESILIENCE_LAB_PROXY_ERROR", message: String(error) }));
     });
   });
 
@@ -125,7 +125,7 @@ export function createPayPalProxy({ port, upstream = PAYPAL_SANDBOX_API }: { por
       return `http://localhost:${typeof address === "object" && address ? address.port : port}`;
     },
     log,
-    // Loopback only: the store under test is on this machine, and nothing outside should reach PayPal through DummyRun.
+    // Loopback only: the store under test is on this machine, and nothing outside should reach PayPal through Resilience Lab.
     listen: () => new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve)),
     close: () => new Promise<void>((resolve) => { server.closeAllConnections(); server.close(() => resolve()); }),
     setRules(next: FaultRule[]) { rules = next.map((r) => ({ ...r })); },
