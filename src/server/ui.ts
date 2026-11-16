@@ -208,6 +208,11 @@ function chip(l) {
   if (l.status === "error") return '<span class="chip fail">Test error</span>';
   const v = l.result.verdict;
   if (v.inconclusive) return '<span class="chip wait">Inconclusive</span>';
+  const a = l.fix && l.fix.after && !l.fix.after.verdict.inconclusive ? l.fix.after.verdict : null;
+  if (a) {
+    const ok = a.atRiskCents === 0 && a.checks.every((c) => c.passed);
+    return '<span class="chip ' + (ok ? "pass" : "fail") + '">' + (ok ? "Fixed: " : "After fix: ") + money(v.atRiskCents) + " → " + money(a.atRiskCents) + "</span>";
+  }
   if (v.atRiskCents > 0) return '<span class="chip fail">' + money(v.atRiskCents) + " at risk</span>";
   if (v.checks.every((c) => c.passed)) return '<span class="chip pass">All checks pass</span>';
   return '<span class="chip fail">' + v.checks.filter((c) => !c.passed).length + " check(s) failed</span>";
@@ -232,11 +237,15 @@ function renderSummary() {
   const judged = done.filter((l) => !laneVerdict(l).inconclusive);
   const risk = judged.reduce((s, l) => s + laneVerdict(l).atRiskCents, 0);
   const rating = judged.length ? Math.min(...judged.map((l) => laneVerdict(l).rating)) : 0;
+  // Tests fixed by the investigator count with their after-fix result; say so.
+  const fixed = judged.filter((l) => l.fix && l.fix.after).length;
+  const before = judged.reduce((s, l) => s + l.result.verdict.atRiskCents, 0);
+  const afterFixes = fixed ? ", after " + fixed + (fixed === 1 ? " fix" : " fixes") : "";
   const running = run.lanes.filter((l) => l.status === "running" || l.status === "checking").length;
   const finished = Boolean(run.finishedAt);
   $("summary").innerHTML =
-    '<div class="rating">' + marks(rating) + "<p>" + (judged.length ? "Resilience score " + rating + " of 5, set by the weakest test" : "No results yet") + "</p></div>" +
-    '<div class="risk ' + (judged.length ? (risk > 0 ? "bad" : "good") : "") + '"><div class="amount">' + (judged.length ? money(risk) : "–") + "</div><p>" + (judged.length ? "money at risk across " + done.length + " of " + run.lanes.length + " tests" : "money at risk shows here as tests finish") + "</p></div>" +
+    '<div class="rating">' + marks(rating) + "<p>" + (judged.length ? "Resilience score " + rating + " of 5, set by the weakest test" + afterFixes : "No results yet") + "</p></div>" +
+    '<div class="risk ' + (judged.length ? (risk > 0 ? "bad" : "good") : "") + '"><div class="amount">' + (judged.length ? money(risk) : "–") + "</div><p>" + (judged.length ? "money at risk across " + done.length + " of " + run.lanes.length + " tests" + (fixed ? afterFixes + " (" + money(before) + " before)" : "") : "money at risk shows here as tests finish") + "</p></div>" +
     '<p class="state">' + (finished ? "Finished " + new Date(run.finishedAt).toLocaleTimeString() : running + " running, " + run.lanes.filter((l) => l.status === "queued").length + " waiting") + "<br>Store: " + (run.store === "original" ? "as the owner wrote it" : "hand-fixed reference") + "</p>";
 }
 
