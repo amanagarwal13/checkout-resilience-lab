@@ -2,9 +2,7 @@
 # Secrets are set in the Render dashboard (sync: false), never in this file.
 services:
   - type: web
-    # Kept as "dummyrun", the project's old name: Render matches Blueprint
-    # services by name, so renaming it would create a second service.
-    name: dummyrun
+    name: checkout-resilience-lab
     runtime: docker
     plan: standard # Chromium for the AI test shoppers needs about 2 GB of memory
     healthCheckPath: /healthz
