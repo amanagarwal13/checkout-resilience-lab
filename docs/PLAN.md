@@ -1,24 +1,14 @@
-# DummyRun build plan
+# Build plan
 
-AI crash-test dummies for PayPal checkouts. AI test shoppers run through a
-store's real checkout, DummyRun injects realistic PayPal failures, checks the
-money in PayPal's own records, explains what broke, writes the fix and proves
-it with a re-run.
+The original plan, written in October 2026 for the PayPal AI Hackathon, when
+the project was called DummyRun. It's kept as a record and uses the old names
+("crash test", "safety rating"). What was actually built is in
+[IMPLEMENTATION_LOG.md](IMPLEMENTATION_LOG.md); the current state is in the
+[README](../README.md).
 
-Hackathon: PayPal AI Hackathon on Devpost.
-
-| Milestone | Date |
-|---|---|
-| Today | Sun Oct 19, 2026 |
-| Complete draft submitted (Devpost early eligibility check) | Wed Nov 5 |
-| Final submission | Tue Nov 11 (deadline Thu Nov 12, 12:00 PT = Fri Nov 13, 01:30 IST) |
-| Judging (demo must stay live) | Dec 1 to Dec 15 |
-
-Prize targets: a Grand Prize, plus Best Use of AG Grid (AG Studio) as the one
-sponsor prize. Fallback honorable mentions: Best Use of PayPal + AI, Best Demo
-Delivery.
-
-Progress is recorded phase by phase in [IMPLEMENTATION_LOG.md](IMPLEMENTATION_LOG.md).
+AI test shoppers run through a store's real checkout, DummyRun injects
+realistic PayPal failures, checks the money in PayPal's own records, explains
+what broke, writes the fix and proves it with a re-run.
 
 ## Architecture
 
@@ -137,20 +127,8 @@ Phases 3 to 6 were completed on Oct 19; Phase 7's files are ready. See the log.
 - Devpost description and testing instructions; complete draft submitted by Nov 5.
 
 ### Phase 10. Video and final polish (Nov 6 to 11)
-- Under-3-minute video in Aman's own voice: hook ("PayPal asked what happens when you put AI behind the wheel. We built the crash test."), the crash, the fix, the re-run, the dashboard, real-world proof.
+- Under-3-minute narrated video: hook ("PayPal asked what happens when you put AI behind the wheel. We built the crash test."), the crash, the fix, the re-run, the dashboard, real-world proof.
 - Final submission Nov 11, a day before the deadline.
-
-## Needs from Aman
-
-| When | What |
-|---|---|
-| Before Phase 7 | Render account with the $50 hackathon credit (done) |
-| Phase 6, around Nov 1 | AG Studio trial key, or a hackathon key valid to Dec 15 from AG Grid's Discord |
-| Phase 9 | Create the public GitHub repo |
-| Phase 8 | One or two real developers or merchants to try it |
-| Phase 10 | Record the voiceover; upload to YouTube; submit on Devpost |
-| Anytime | Replace the OpenAI key that was pasted in chat; set a spending limit |
-| Before building | Check the employment contract's IP clause (rules require sole ownership) |
 
 ## Risks
 

@@ -4,6 +4,26 @@
   "description": "Stress tests for PayPal checkouts, run by AI shoppers",
   "private": true,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amanagarwal13/checkout-resilience-lab.git"
+  },
+  "homepage": "https://github.com/amanagarwal13/checkout-resilience-lab#readme",
+  "bugs": "https://github.com/amanagarwal13/checkout-resilience-lab/issues",
+  "keywords": [
+    "paypal",
+    "checkout",
+    "payments",
+    "testing",
+    "stress-testing",
+    "fault-injection",
+    "ai-agents",
+    "playwright",
+    "mcp"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
   "type": "module",
   "scripts": {
     "start": "tsx src/server/server.ts",

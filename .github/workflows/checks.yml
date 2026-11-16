@@ -1,18 +1,36 @@
-# Stress-tests the store on every pull request: AI test shoppers run the
-# scenarios against PayPal's sandbox and the check fails if money goes wrong.
-# Needs repository secrets PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, OPENAI_API_KEY.
-name: Stress test
+# Type check and unit tests on every push and pull request (free, no keys).
+# The end-to-end stress test calls PayPal's sandbox and OpenAI, so it runs
+# only when started by hand from the Actions tab. It needs repository secrets
+# PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET and OPENAI_API_KEY.
+name: Checks
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 concurrency:
-  group: stress-test-${{ github.ref }}
+  group: checks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
   stress-test:
+    if: github.event_name == 'workflow_dispatch'
+    needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -23,8 +41,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run typecheck
-      - run: npm test
       - name: Stress-test the store you ship
         run: npm run stress -- refund-retry declined-card price-tamper double-pay fixed --strict
         env:

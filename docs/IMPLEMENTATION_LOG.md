@@ -187,7 +187,7 @@ Cost note: the Standard plan is about $25 a month. Deploying now and running to 
 ## Phase 11. Tests for DummyRun itself
 **Date:** Oct 20 · **Status:** done
 
-The project moved to `D:\Aman Personal Projects\PayPal-Hackathon` (GitHub `amanagarwal13/PayPal-Hackathon`) with its full history.
+The project moved to its own GitHub repository with its full history.
 
 Built: 15 tests with Node's test runner (`npm test`, also in CI), no PayPal or OpenAI calls needed:
 - **Money checks** (8): clean purchase, refund paid twice, rating cap when money is at risk, goods sold below catalog price, order marked paid with no charge, a declined card handled well, scam refunds beyond policy, and an incomplete purchase being inconclusive.
