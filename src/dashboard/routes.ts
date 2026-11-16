@@ -52,7 +52,7 @@ function page() {
 </style></head>
 <body>
 <header class="bar"><a class="brand" href="/"><span class="target" aria-hidden="true"></span><span class="wordmark">Checkout Resilience Lab</span></a>
-<nav><a href="/">Stress tests</a><a href="/dashboard" aria-current="page">Dashboard</a></nav></header>
+<nav><a href="/">Stress tests</a><a href="/dashboard" aria-current="page">Dashboard</a><a href="/agents">Coding agents</a></nav></header>
 <div id="dashboard"></div>
 <script>window.RESILIENCE_LAB = ${JSON.stringify(settings)};</script>
 <script type="module" src="/dashboard.js"></script>

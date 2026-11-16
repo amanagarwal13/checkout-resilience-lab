@@ -22,7 +22,7 @@ export function page() {
     </select>
   </div>
   <button id="run" class="primary">Run stress test</button>
-  <nav class="nav"><a href="/" aria-current="page">Stress tests</a><a href="/dashboard">Dashboard</a></nav>
+  <nav class="nav"><a href="/" aria-current="page">Stress tests</a><a href="/dashboard">Dashboard</a><a href="/agents">Coding agents</a></nav>
 </header>
 
 <main>
@@ -37,7 +37,7 @@ export function page() {
 </html>`;
 }
 
-const styles = `
+export const styles = `
 :root {
   --lab: #EDF0EF; --panel: #FFFFFF; --ink: #1D2327; --steel: #5A6872; --line: #CDD5D8;
   --yellow: #F2C400; --black: #15191C; --fail: #C8372D; --fail-bg: #FBE9E7; --pass: #1F7A4D; --pass-bg: #E4F2EA;

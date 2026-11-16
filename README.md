@@ -64,7 +64,7 @@ npm run fix -- refund-scam              # stress-test, investigate, patch a copy
 
 ## Use it from your coding agent
 
-With the lab running (`npm start`), Resilience Lab is also an MCP server at `http://localhost:3000/mcp`. Your coding agent can stress-test the checkout, read the evidence, get the fix as edits, apply them to your files and run the test again. Each test starts the store fresh from your folder, so the re-run tests exactly what the agent saved.
+With the lab running (`npm start`), Resilience Lab is also an MCP server at `http://localhost:3000/mcp`. The lab's **Coding agents** page (http://localhost:3000/agents) walks through connecting Claude Code, Claude Desktop, Cursor and Codex, what each tool does, and the test-and-fix flow step by step. Your coding agent can stress-test the checkout, read the evidence, get the fix as edits, apply them to your files and run the test again. Each test starts the store fresh from your folder, so the re-run tests exactly what the agent saved.
 
 ```bash
 claude mcp add --transport http checkout-resilience-lab http://localhost:3000/mcp

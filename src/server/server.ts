@@ -9,6 +9,7 @@ import { buildDashboard, dashboardRoutes } from "../dashboard/routes.js";
 import { createLab, type StoreLabel } from "./lab.js";
 import { envNumber, limit } from "./limits.js";
 import { page } from "./ui.js";
+import { agentsPage } from "./agents.js";
 
 const lab = createLab();
 const app = new Hono();
@@ -27,6 +28,7 @@ await buildDashboard();
 dashboardRoutes(app, lab);
 
 app.get("/", (c) => c.html(page()));
+app.get("/agents", (c) => c.html(agentsPage(publicUrl)));
 app.get("/api/scenarios", (c) => c.json(lab.scenarios()));
 app.get("/api/runs", (c) =>
   c.json(lab.list().map((r) => ({ id: r.id, startedAt: r.startedAt, finishedAt: r.finishedAt, store: r.store, lanes: r.lanes.map((l) => ({ scenario: l.scenario, status: l.status, verdict: l.result?.verdict })) }))),
