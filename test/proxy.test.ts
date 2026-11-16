@@ -39,6 +39,21 @@ test("forwards calls to PayPal and logs the IDs that matter", async () => {
   }
 });
 
+test("requests that aren't PayPal API calls are neither forwarded nor logged", async () => {
+  const paypal = await fakePayPal();
+  const proxy = createPayPalProxy({ port: 0, upstream: paypal.url });
+  await proxy.listen();
+  try {
+    const probe = await fetch(`${proxy.url}/`, { method: "HEAD" });
+    assert.equal(probe.status, 404);
+    assert.equal(paypal.received.length, 0);
+    assert.equal(proxy.log.length, 0);
+  } finally {
+    await proxy.close();
+    paypal.close();
+  }
+});
+
 test("delay-response lets PayPal process the call, then holds the answer", async () => {
   const paypal = await fakePayPal();
   const proxy = createPayPalProxy({ port: 0, upstream: paypal.url });

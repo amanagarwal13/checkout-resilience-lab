@@ -78,6 +78,13 @@ export function createPayPalProxy({ port, upstream = PAYPAL_SANDBOX_API }: { por
     const path = req.url ?? "/";
     const body = await readBody(req);
 
+    // Only PayPal API calls (/v1/..., /v2/...) are the store's. Anything else,
+    // such as a hosting platform probing open ports, isn't forwarded or logged.
+    if (!/^\/v\d+\//.test(path)) {
+      res.writeHead(404).end();
+      return;
+    }
+
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
       if (!HOP_HEADERS.has(key) && typeof value === "string") headers.set(key, value);
